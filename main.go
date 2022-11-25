@@ -19,13 +19,13 @@ var testing = true
 func main() {
 	r := gin.Default()
 
-	r.StaticFile("/", "./index.html")
-	r.StaticFile("/index.html", "./index.html")
+	r.StaticFile("/", ".build/index.html")
+	r.StaticFile("/index.html", ".build/index.html")
 	r.StaticFile("/media/clong-2.mp3", "./media/clong-2.mp3")
 	r.StaticFile("/media/clong-2.wav", "./media/clong-2.wav")
 	r.StaticFile("/packages/browser/dart.js", "./packages/browser/dart.js")
 	r.StaticFile("/psctester.css", "./psctester.css")
-	r.StaticFile("/psctester.dart.js", "./psctester.dart.js")
+	r.StaticFile("/psctester.dart.js", ".build/psctester.dart.js")
 	r.StaticFile("/script_ver", "./script_ver")
 	r.StaticFile("/version_tag.txt", "./version_tag.txt")
 

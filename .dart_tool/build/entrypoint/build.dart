@@ -1,8 +1,3 @@
-// Ensure that the build script itself is not opted in to null safety,
-// instead of taking the language version from the current package.
-//
-// @dart=2.9
-//
 // ignore_for_file: directives_ordering
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:build_runner_core/build_runner_core.dart' as _i1;
@@ -121,7 +116,7 @@ final _builders = <_i1.BuilderApplication>[
 ];
 void main(
   List<String> args, [
-  _i6.SendPort sendPort,
+  _i6.SendPort? sendPort,
 ]) async {
   var result = await _i7.run(
     args,
