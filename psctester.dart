@@ -191,7 +191,7 @@ getVersions() {
 }
 
 getAddresses() {
-  ParagraphElement p = querySelector("#ip") as ParagraphElement;
+  SpanElement p = querySelector("#ip") as SpanElement;
   while (p.children.length > 0) {
     p.children.removeLast();
   }
@@ -221,7 +221,7 @@ fix_time(event) {
   request.onTimeout.listen((e) {
     mainTimeout();
   });
-  String path = 'cgi-bin/settime.py';
+  String path = '/cgi-bin/settime.py';
 
   request.open('POST', path);
 
@@ -641,9 +641,7 @@ void checkstatus() {
           InputElement t = querySelector("#siteid") as InputElement;
 //        t.value = "Testing - ${data['address']}";
           t.value = data['address'];
-          if (t != null) {
-            t.disabled = true;
-          }
+          t.disabled = true;
           if (CurrTest == 'tmx4') {
             InputElement? ie = querySelector("#serial") as InputElement?;
             if (ie != null) {
@@ -654,7 +652,8 @@ void checkstatus() {
               ie.disabled = true;
             }
           }
-          ButtonElement? button = querySelector("#testbutton") as ButtonElement?;
+          ButtonElement? button =
+              querySelector("#testbutton") as ButtonElement?;
           if (button != null) {
             button.text = "Test in progress";
             button.disabled = true;

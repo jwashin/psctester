@@ -10,6 +10,7 @@ def dotest():
 
     lw = logwriter.logwriter
     z = sys.stdin.read()
+    # z = '{"serial": "", "siteid": "305", "address": "305"}'
     try:
         indata = json.loads(z)
     except:

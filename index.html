@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 
 <html>
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,105 +9,102 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="stylesheet" href="psctester.css">
 </head>
+
 <body>
 
-<h1 id="top">PSC Tester</h1>
+  <h1 id="top">PSC Tester</h1>
 
-<section id="main">
-  <div>
-    <span>System time: </span><span id="dt"></span>
-  </div>
-  <button id="test_tmx5">Test TMX5</button>
-  <button id="test_tmx4">Test TMX4</button>
-  <button id="test_tmx3">Test TMX3</button>
-  <button id="test_tmx1">Test TMX1</button>
-  <button id="manage_files">Files</button>
-  <button id="maintenance">System</button>
-  <button id="test_tmx5n">Test TMX5n</button>
-  <button id="test_Qfam">Test Qfam</button>
-
-</section>
-
-<section id="testing" class="hidden">
-  <audio id="bell">
-    <source src="media/clong-2.wav" type="audio/wav">
-    <source src="media/clong-2.mp3" type="audio/mpeg">
-  </audio>
-  <div><label for="siteid">Site ID: </label>
-    <input type="number" min="150" max="2500" id="siteid"
-           placeholder="Site ID">
-
-  </div>
-  <div id="tmx5"></div>
-  <div id="serial_entry">
-    <div><label for="serial">Serial: </label>
-      <input type="number" min="1000" max="99999999"
-             id="serial" placeholder="Serial number">
+  <section id="main">
+    <div>
+      <span>System time: </span><span id="dt"></span>
     </div>
-  </div>
-  <div id="tmx3_type" class="hidden">
-    <div><br>
-      <label>
-        <input type="radio"
-               name="tmx3" value="RSM3"> RSM3</label>
-      <br>
-      <label>
-        <input type="radio"
-               name="tmx3" value="MC3-24"> MC3-24</label>
-      <br>
-      <label>
-        <input type="radio"
-               name="tmx3" value="MC3-48"> MC3-48</label>
+    <button id="test_tmx5">Test TMX5</button>
+    <button id="test_tmx4">Test TMX4</button>
+    <button id="test_tmx3">Test TMX3</button>
+    <button id="test_tmx1">Test TMX1</button>
+    <button id="test_tmx5n">Test TMX5n</button>
+    <button id="test_Qfam">Test Qfam</button>
+    <button id="manage_files">Files</button>
+    <button id="maintenance">System</button>
+  </section>
+
+  <section id="testing" class="hidden">
+    <audio id="bell">
+      <source src="media/clong-2.wav" type="audio/wav">
+      <source src="media/clong-2.mp3" type="audio/mpeg">
+    </audio>
+    <div><label for="siteid">Site ID: </label>
+      <input type="number" min="150" max="2500" id="siteid" placeholder="Site ID">
+
     </div>
-    <div id="channels" class="hidden">
-      <label>
-        <input id="channel_input" type="tel" pattern="[0-9\-]*" name="channels"
-               class="ci"> Channels<br>(2 or 3 numbers, separate with dash "-")
-      </label>
+    <div id="tmx5"></div>
+    <div id="serial_entry">
+      <div><label for="serial">Serial: </label>
+        <input type="number" min="1000" max="99999999" id="serial" placeholder="Serial number">
+      </div>
     </div>
+    <div id="tmx3_type" class="hidden">
+      <div><br>
+        <label>
+          <input type="radio" name="tmx3" value="RSM3"> RSM3</label>
+        <br>
+        <label>
+          <input type="radio" name="tmx3" value="MC3-24"> MC3-24</label>
+        <br>
+        <label>
+          <input type="radio" name="tmx3" value="MC3-48"> MC3-48</label>
+      </div>
+      <div id="channels" class="hidden">
+        <label>
+          <input id="channel_input" type="tel" pattern="[0-9\-]*" name="channels" class="ci"> Channels<br>(2 or 3
+          numbers, separate with dash "-")
+        </label>
+      </div>
+    </div>
+    <button id="testbutton">New test</button>
+    <div id="file_available" class="hidden">
+      <form id="download_latest">
+        <button type="submit">Download latest file</button>
+      </form>
+    </div>
+    <button id="return_main">Return to Main Page</button>
+  </section>
+
+  <section id="files" class="hidden">
+
+    <div id="choosing">
+      <select id="modselect"></select>
+
+      <form id="filesform" method="post">
+        <select name="files" multiple id="downloads">
+        </select>
+        <button type="submit" id="download">Download Zipfile</button>
+      </form>
+      <button id="archive">Move files to Archive</button>
+    </div>
+
+    <button id="return_main2">Return to Main Page</button>
+  </section>
+
+  <section id="sysmaint" class="hidden">
+    <div>
+      <span>System time: </span><span id="dt1"></span>
+    </div>
+    <p><span id="ip">Wired:</span><br>
+      <span id="wireless">Wireless:</span>
+    </p>
+
+    <p><strong id="swver">Software versions:</strong>
+    <pre id="versions"></pre>
+    <button id="time_fix">Set system time (from phone)</button>
+    <button id="reinit">Reinitialize control file</button>
+    <button id="go_main">Return to Main Page</button>
+  </section>
+  <div id="messageblock" class="hidden">
+    <div id="messages"></div>
   </div>
-  <button id="testbutton">New test</button>
-  <div id="file_available" class="hidden">
-    <form id="download_latest">
-      <button type="submit">Download latest file</button>
-    </form>
-  </div>
-  <button id="return_main">Return to Main Page</button>
-</section>
-
-<section id="files" class="hidden">
-
-  <div id="choosing">
-    <select id="modselect"></select>
-
-    <form id="filesform" method="post">
-      <select name="files" multiple id="downloads">
-      </select>
-      <button type="submit" id="download">Download Zipfile</button>
-    </form>
-    <button id="archive">Move files to Archive</button>
-  </div>
-
-  <button id="return_main2">Return to Main Page</button>
-</section>
-
-<section id="sysmaint" class="hidden">
-  <div>
-    <span>System time: </span><span id="dt1"></span>
-  </div>
-  <p><span id="ip">Wired:</span><br>
-    <span id="wireless">Wireless:</span></p>
-
-  <p><strong id="swver">Software versions:</strong>
-  <pre id="versions"></pre>
-  <button id="time_fix">Set system time (from phone)</button>
-  <button id="reinit">Reinitialize control file</button>
-  <button id="go_main">Return to Main Page</button>
-</section>
-<div id="messageblock" class="hidden">
-  <div id="messages"></div>
-</div>
-<script type="application/dart" src="psctester.dart"></script>
-<script type="text/javascript" src="packages/browser/dart.js"></script>
+  <script type="application/dart" src="psctester.dart"></script>
+  <script type="text/javascript" src="packages/browser/dart.js"></script>
 </body>
+
 </html>

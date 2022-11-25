@@ -10,6 +10,7 @@ ver_file.close()
 import json
 import time
 import datetime
+import os
 
 DATA_VERSION = '1.0'
 
@@ -84,9 +85,9 @@ class LogWriter(object):
         self.overwrite_last = True
         
 
-thefile = "../control.json"
+currentdirectory = os.path.dirname(__file__)
+thefile = os.path.join(currentdirectory, "..",  "control.json")
 logwriter = LogWriter(thefile)
-
 
 if __name__ == '__main__':
     

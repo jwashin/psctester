@@ -29,11 +29,15 @@ func main() {
 	r.StaticFile("/script_ver", "./script_ver")
 	r.StaticFile("/version_tag.txt", "./version_tag.txt")
 
+	// development files
+	r.StaticFile("/psctester.dart.js.map", "./psctester.dart.js.map")
+	r.StaticFile("/psctester.dart.js.deps", "./psctester.dart.js.deps")
+	r.StaticFile("/psctester.dart", "./psctester.dart")
+
 	r.GET("/control.json",
 		func(c *gin.Context) {
 			d, _ := os.ReadFile("control.json")
-			extraHeaders := map[string]string{"cache-control": "no-store"}
-			c.String(200, "%s", string(d), extraHeaders)
+			c.String(200, "%s", string(d))
 		})
 
 	r.GET("/cgi-bin/ip_addr.py",
@@ -68,7 +72,7 @@ func main() {
 			cmd := exec.Command("python3", filename)
 			buffer := bytes.Buffer{}
 			d := Indata{}
-			c.BindJSON(d)
+			c.BindJSON(&d)
 			st, _ := json.Marshal(&d)
 			buffer.Write(st)
 			cmd.Stdin = &buffer
@@ -127,7 +131,7 @@ func main() {
 			var data DateList
 			c.BindJSON(&data)
 			SetSystemDate(makeDate(data))
-			c.String(http.StatusOK, "")
+			c.JSON(http.StatusOK, gin.H{"resp": true})
 		})
 
 	r.GET("/flutter_service_worker.js", func(c *gin.Context) {
