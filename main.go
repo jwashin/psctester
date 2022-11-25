@@ -19,20 +19,30 @@ var testing = true
 func main() {
 	r := gin.Default()
 
-	r.StaticFile("/", ".build/index.html")
-	r.StaticFile("/index.html", ".build/index.html")
-	r.StaticFile("/media/clong-2.mp3", "./media/clong-2.mp3")
-	r.StaticFile("/media/clong-2.wav", "./media/clong-2.wav")
-	r.StaticFile("/packages/browser/dart.js", "./packages/browser/dart.js")
-	r.StaticFile("/psctester.css", "./psctester.css")
-	r.StaticFile("/psctester.dart.js", ".build/psctester.dart.js")
-	r.StaticFile("/script_ver", "./script_ver")
-	r.StaticFile("/version_tag.txt", "./version_tag.txt")
+	// r.Static("/", "./build")
+	r.StaticFile("/", "./build/index.html")
+	r.StaticFile("/index.html", "./build/index.html")
+	r.Static("/media", "./build/media")
+	r.Static("/packages", "./build/packages")
+
+	// r.StaticFile("/media/clong-2.wav", "./media/clong-2.wav")
+	// r.StaticFile("/packages/browser/dart.js", "./packages/browser/dart.js")
+
+	r.StaticFile("/psctester.css", "./build/psctester.css")
+	r.StaticFile("/psctester.dart.js", "./build/psctester.dart.js")
+
+	r.StaticFile("script_ver", "./script_ver")
+	r.StaticFile("version_tag.txt", "./version_tag.txt")
+	// r.StaticFile("/", ".build/index.html")
 
 	// development files
-	r.StaticFile("/psctester.dart.js.map", "./psctester.dart.js.map")
-	r.StaticFile("/psctester.dart.js.deps", "./psctester.dart.js.deps")
-	r.StaticFile("/psctester.dart", "./psctester.dart")
+	r.StaticFile("/psctester.dart", "./build/psctester.dart")
+	r.StaticFile("/psctester.dart.bootstrap.js", "./build/psctester.dart.bootstrap.js")
+	r.StaticFile("/psctester.sound.ddc.js", "./build/psctester.sound.ddc.js")
+	r.StaticFile("/psctester.sound.ddc.js.map", "./build/psctester.sound.ddc.js.map")
+	// r.StaticFile("/psctester.dart.js.map", "./psctester.dart.js.map")
+	// r.StaticFile("/psctester.dart.js.deps", "./psctester.dart.js.deps")
+	// r.StaticFile("/psctester.dart", "./psctester.dart")
 
 	r.GET("/control.json",
 		func(c *gin.Context) {
@@ -66,7 +76,7 @@ func main() {
 	r.POST("cgi-bin/dotest.py",
 		func(c *gin.Context) {
 			filename := "./cgi-bin/dotest.py"
-			if testing {
+			if os.Getenv("PSC_TRIAL") != "" {
 				filename = "./cgi-bin/jim_dotest.py"
 			}
 			cmd := exec.Command("python3", filename)

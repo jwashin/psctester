@@ -24,15 +24,18 @@ List selectionModes = [
 ];
 
 hide(String selector) {
-  Element item = querySelector(selector)!;
-
-  item.hidden = true;
+  Element? item = querySelector(selector);
+  if (item != null) {
+    item.hidden = true;
+  }
 }
 
 show(String selector) {
-  Element item = querySelector(selector)!;
-  item.classes.remove('hidden');
-  item.hidden = false;
+  Element? item = querySelector(selector);
+  if (item != null) {
+    item.classes.remove('hidden');
+    item.hidden = false;
+  }
 }
 
 void main() {
