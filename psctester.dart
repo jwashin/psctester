@@ -5,8 +5,8 @@ import 'package:intl/intl.dart';
 
 const POLLFREQUENCY = const Duration(seconds: 2);
 
-String currentlogfilename;
-String downloadFile;
+String? currentlogfilename;
+String? downloadFile;
 
 bool mainTimedOut = false;
 
@@ -22,13 +22,13 @@ List SelectionModes = [
 ];
 
 hide(String selector) {
-  Element item = querySelector(selector);
+  Element item = querySelector(selector)!;
 
   item.hidden = true;
 }
 
 show(String selector) {
-  Element item = querySelector(selector);
+  Element item = querySelector(selector)!;
   item.classes.remove('hidden');
   item.hidden = false;
 }
@@ -41,17 +41,17 @@ void main() {
   hide('#sysmaint');
   hide('#messageblock');
   showdate("#dt");
-  ButtonElement tmx5button = querySelector("#test_tmx5");
+  ButtonElement tmx5button = querySelector("#test_tmx5") as ButtonElement;
   tmx5button.onClick.listen((e) {
     do_tmx5(e);
   });
   CurrTest = '';
-  ButtonElement tmx4button = querySelector("#test_tmx4");
+  ButtonElement tmx4button = querySelector("#test_tmx4") as ButtonElement;
   tmx4button.onClick.listen((e) {
     do_tmx4(e);
   });
 
-  ButtonElement files = querySelector("#manage_files");
+  ButtonElement files = querySelector("#manage_files") as ButtonElement;
 
   files.onClick.listen((e) {
     do_files(e);
@@ -59,7 +59,7 @@ void main() {
 
   //testbutton.disabled = true;
 
-  ButtonElement maintenance = querySelector("#maintenance");
+  ButtonElement maintenance = querySelector("#maintenance") as ButtonElement;
 
   maintenance.onClick.listen((e) {
     do_maintenance(e);
@@ -69,7 +69,7 @@ void main() {
   // filesbutton.onClick.listen(showfiles);
 
   window.onResize.listen((e) {
-    Element z = querySelector('#messageblock');
+    Element? z = querySelector('#messageblock');
     if (z != null && z.hidden == false) {
       sizeMessageBlock();
     }
@@ -81,22 +81,22 @@ void main() {
 do_files(event) {
   hide('#main');
   show('#files');
-  ButtonElement returnbutton = querySelector("#return_main2");
+  ButtonElement returnbutton = querySelector("#return_main2") as ButtonElement;
   returnbutton.onClick.listen((e) {
     return_main(e);
   });
   showfiles();
-  SelectElement modselect = querySelector('#modselect');
+  SelectElement modselect = querySelector('#modselect') as SelectElement;
   modselect.value = SelectionModes[0];
   modselect.onChange.listen((e) {
     doFileSelection();
   });
 
-  ButtonElement download = querySelector('#download');
+  ButtonElement download = querySelector('#download') as ButtonElement;
   download.onClick.listen((Event e) {
     make_zipfile(e);
   });
-  ButtonElement archive = querySelector('#archive');
+  ButtonElement archive = querySelector('#archive') as ButtonElement;
   archive.onClick.listen((Event e) {
     archiveFiles(e);
   });
@@ -105,7 +105,7 @@ do_files(event) {
 do_tmx4(event) {
   CurrTest = 'tmx4';
   show("#testing");
-  Element testing = querySelector("#testing");
+  Element testing = querySelector("#testing")!;
   testing.classes.remove('hidden');
   enableTest();
 //  show("#siteidinput");
@@ -116,11 +116,11 @@ do_tmx4(event) {
 }
 
 enableTest() {
-  ButtonElement testbutton = querySelector('#testbutton');
+  ButtonElement testbutton = querySelector('#testbutton') as ButtonElement;
   testbutton.text = "Begin test";
   testbutton.disabled = false;
   show('#messageblock');
-  InputElement siteid = querySelector('#siteid');
+  InputElement siteid = querySelector('#siteid') as InputElement;
   siteid.disabled = false;
   siteid.focus();
   sizeMessageBlock();
@@ -132,20 +132,20 @@ enableTest() {
 do_tmx5(event) {
   show("#testing");
   CurrTest = 'tmx5';
-  Element testing = querySelector("#testing");
+  Element testing = querySelector("#testing")!;
   testing.classes.remove('hidden');
   enableTest();
 //  show("#siteidinput");
 //  show('#tmx5');
   hide("#tmx4");
-  InputElement serial = querySelector("#serial");
+  InputElement serial = querySelector("#serial") as InputElement;
   serial.value = '';
   hide("#main");
   rt_main_enable();
 }
 
 rt_main_enable() {
-  ButtonElement returnbutton = querySelector("#return_main");
+  ButtonElement returnbutton = querySelector("#return_main") as ButtonElement;
   returnbutton.onClick.listen((e) {
     return_main(e);
   });
@@ -154,23 +154,23 @@ rt_main_enable() {
 do_maintenance(event) {
   hide("#main");
   hide('#messageblock');
-  Element maint = querySelector("#sysmaint");
+  Element maint = querySelector("#sysmaint")!;
   maint.classes.remove('hidden');
   show('#sysmaint');
   showdate('#dt1');
   getVersions();
   getAddresses();
-  ButtonElement settime = querySelector("#time_fix");
+  ButtonElement settime = querySelector("#time_fix") as ButtonElement;
   settime.onClick.listen((e) {
     fix_time(e);
   });
 
-  ButtonElement returnbutton = querySelector("#go_main");
+  ButtonElement returnbutton = querySelector("#go_main") as ButtonElement;
   returnbutton.onClick.listen((e) {
     return_main(e);
   });
 
-  ButtonElement reinitbutton = querySelector("#reinit");
+  ButtonElement reinitbutton = querySelector("#reinit") as ButtonElement;
   reinitbutton.onClick.listen((e) {
     HttpRequest.getString("/cgi-bin/initcontrolfile.py").then((var resp) {
       window.alert('Control file reinitialized!');
@@ -179,27 +179,27 @@ do_maintenance(event) {
 }
 
 getVersions() {
-  PreElement pretag = querySelector('#versions');
+  PreElement? pretag = querySelector('#versions') as PreElement?;
   HttpRequest.getString("/script_ver").then((var resp) {
-    pretag.text = resp;
+    pretag!.text = resp;
   });
 
-  Element s = querySelector('#swver');
+  Element? s = querySelector('#swver');
   HttpRequest.getString("/version_tag.txt").then((var resp) {
-    s.text = "Software versions: ( " + resp + " )";
+    s!.text = "Software versions: ( " + resp + " )";
   });
 }
 
 getAddresses() {
-  ParagraphElement p = querySelector("#ip");
+  ParagraphElement p = querySelector("#ip") as ParagraphElement;
   while (p.children.length > 0) {
     p.children.removeLast();
   }
 
   HttpRequest.getString("/cgi-bin/ip_addr.py").then((var resp) {
     Map j = jsonDecode(resp);
-    for (String item in j.keys) {
-      String address = j[item];
+    for (String item in j.keys as Iterable<String>) {
+      String? address = j[item];
       if (item[0] == 'w') {
         p.appendText('Wireless: ${address} ');
       } else {
@@ -230,7 +230,7 @@ fix_time(event) {
 }
 
 onTimeFix(HttpRequest request, DateTime t) {
-  String resp = request.responseText;
+  String resp = request.responseText!;
   Map j = jsonDecode(resp);
   if (j['resp'] == true) {
     showdate('#dt1');
@@ -241,11 +241,11 @@ onTimeFix(HttpRequest request, DateTime t) {
 }
 
 return_main(event) {
-  document.window.location.href = '/';
+  document.window!.location.href = '/';
 }
 
 clearFiles() {
-  SelectElement downloads = querySelector("#downloads");
+  SelectElement downloads = querySelector("#downloads") as SelectElement;
   while (downloads.children.length > 0) {
     downloads.children.removeLast();
   }
@@ -253,7 +253,7 @@ clearFiles() {
 
 showdate(loc) {
   String path = 'cgi-bin/getdate.py';
-  SpanElement dt = querySelector(loc);
+  SpanElement? dt = querySelector(loc) as SpanElement?;
   HttpRequest.getString(path).then((var resp) {
     String dtstring = jsonDecode(resp)['datetime'];
     DateTime value = DateTime.parse(dtstring).toLocal();
@@ -266,16 +266,16 @@ showdate(loc) {
 //      m = "0${m}";
 //    }
 //    String slug = "${value.year.toString()}-${value.month.toString().padLeft(2,'0')}-${value.day.toString().padLeft(2,'0')}";
-    dt.text = txt;
+    dt!.text = txt;
   });
 }
 
 showfiles() {
   String path = 'cgi-bin/fileslist.py';
-  SelectElement modselect = querySelector('#modselect');
+  SelectElement modselect = querySelector('#modselect') as SelectElement;
 
   if (modselect.children.length == 0) {
-    for (String mode in SelectionModes) {
+    for (String mode in SelectionModes as Iterable<String>) {
       OptionElement o = new OptionElement();
       o.text = mode;
       o.value = mode;
@@ -288,7 +288,7 @@ showfiles() {
 //  ButtonElement button = event.target;
 //  String t = button.text;
 
-  SelectElement downloads = querySelector("#downloads");
+  SelectElement? downloads = querySelector("#downloads") as SelectElement?;
   HttpRequest.getString(path).then((var resp) {
     var data = jsonDecode(resp)['files'];
 
@@ -296,7 +296,7 @@ showfiles() {
       OptionElement o = new OptionElement();
       o.text = filename;
       o.value = filename;
-      downloads.children.add(o);
+      downloads!.children.add(o);
 
 //        TableRowElement r = downloads.addRow();
 //        TableCellElement left = r.addCell();
@@ -319,11 +319,11 @@ showfiles() {
 archiveFiles(Event event) {
   event.preventDefault();
   event.stopPropagation();
-  FormElement theForm = querySelector('#filesform');
+  FormElement? theForm = querySelector('#filesform') as FormElement?;
   String action = 'cgi-bin/archive_files.py';
-  SelectElement downloads = querySelector("#downloads");
+  SelectElement downloads = querySelector("#downloads") as SelectElement;
   int count = 0;
-  for (OptionElement o in downloads.children) {
+  for (OptionElement o in downloads.children as Iterable<OptionElement>) {
     if (o.selected == true) {
       count += 1;
     }
@@ -334,19 +334,19 @@ archiveFiles(Event event) {
   }
 
   FormData data = new FormData(theForm);
-  HttpRequest.request(action, method: theForm.method, sendData: data)
+  HttpRequest.request(action, method: theForm!.method, sendData: data)
       .then((HttpRequest req) {
     showfiles();
-    SelectElement modselect = querySelector('#modselect');
+    SelectElement modselect = querySelector('#modselect') as SelectElement;
     modselect.selectedIndex = 0;
   });
 }
 
 make_zipfile(Event event) {
-  FormElement theForm = querySelector('#filesform');
+  FormElement theForm = querySelector('#filesform') as FormElement;
   theForm.action = 'cgi-bin/get_zip.py';
-  SelectElement downloads = querySelector("#downloads");
-  if (downloads.value.length == 0) {
+  SelectElement downloads = querySelector("#downloads") as SelectElement;
+  if (downloads.value!.length == 0) {
     event.preventDefault();
     event.stopPropagation();
     window.alert('Please select files for download,');
@@ -386,23 +386,23 @@ make_zipfile(Event event) {
 
 doFileSelection() {
   //List SelectionModes = ['select none', "today's files", "this week's files", 'select all'];
-  SelectElement downloads = querySelector("#downloads");
-  SelectElement modselect = querySelector('#modselect');
+  SelectElement? downloads = querySelector("#downloads") as SelectElement?;
+  SelectElement modselect = querySelector('#modselect') as SelectElement;
   if (modselect.value == SelectionModes[0]) {
-    for (OptionElement o in downloads.children) {
+    for (OptionElement o in downloads!.children as Iterable<OptionElement>) {
       //select none
       o.selected = false;
     }
   } else if (modselect.value == SelectionModes[3]) {
     //select all
-    for (OptionElement o in downloads.children) {
+    for (OptionElement o in downloads!.children as Iterable<OptionElement>) {
       o.selected = true;
     }
   } else if (modselect.value == SelectionModes[1]) {
     //select today
-    sortOptions(downloads, datesort);
+    sortOptions(downloads!, datesort);
     String today = sformat(new DateTime.now());
-    for (OptionElement o in downloads.children) {
+    for (OptionElement o in downloads.children as Iterable<OptionElement>) {
       Map meta = metaParse(o.value);
       if (meta['date'] == today) {
         o.selected = true;
@@ -412,9 +412,9 @@ doFileSelection() {
     }
   } else if (modselect.value == SelectionModes[2]) {
     //select last seven days
-    sortOptions(downloads, datesort);
+    sortOptions(downloads!, datesort);
     List lastseven = lastSevenDays();
-    for (OptionElement o in downloads.children) {
+    for (OptionElement o in downloads.children as Iterable<OptionElement>) {
       if (lastseven.contains(metaParse(o.value)['date'])) {
         o.selected = true;
       } else {
@@ -422,9 +422,9 @@ doFileSelection() {
       }
     }
   } else if (modselect.value == SelectionModes[4]) {
-    sortOptions(downloads, sitesort);
+    sortOptions(downloads!, sitesort);
   } else if (modselect.value == SelectionModes[5]) {
-    for (OptionElement o in downloads.children) {
+    for (OptionElement o in downloads!.children as Iterable<OptionElement>) {
       if (o.selected == true) {
         o.selected = false;
       } else {
@@ -436,7 +436,7 @@ doFileSelection() {
 
 sortOptions(SelectElement element, Comparator compare) {
   List myList = [];
-  for (OptionElement item in element.children) {
+  for (OptionElement item in element.children as Iterable<OptionElement>) {
     myList.add(item.value);
   }
   myList.sort(compare);
@@ -444,7 +444,7 @@ sortOptions(SelectElement element, Comparator compare) {
   while (element.children.length > 0) {
     element.children.removeLast();
   }
-  for (String item in myList) {
+  for (String item in myList as Iterable<String>) {
     OptionElement o = new OptionElement();
     o.text = item;
     o.value = item;
@@ -461,7 +461,7 @@ lastSevenDays() {
     count += 1;
   }
   List newList = [];
-  for (DateTime d in theList) {
+  for (DateTime d in theList as Iterable<DateTime>) {
     newList.add(sformat(d));
   }
   return newList;
@@ -505,26 +505,26 @@ sformat(adate) {
 //}
 
 validateInputs() {
-  InputElement t = querySelector("#siteid");
+  InputElement t = querySelector("#siteid") as InputElement;
 
-  if (int.tryParse(t.value) == null) {
+  if (int.tryParse(t.value!) == null) {
     return false;
   }
 
-  num siteid = t.valueAsNumber;
-  num max = int.parse(t.attributes['max']);
-  num min = int.parse(t.attributes['min']);
+  num siteid = t.valueAsNumber!;
+  num max = int.parse(t.attributes['max']!);
+  num min = int.parse(t.attributes['min']!);
   if (siteid > max || siteid < min) {
     return false;
   }
   if (CurrTest == 'tmx4') {
-    InputElement t = querySelector("#serial");
-    if (int.tryParse(t.value) == null) {
+    InputElement t = querySelector("#serial") as InputElement;
+    if (int.tryParse(t.value!) == null) {
       return false;
     }
-    num serial = t.valueAsNumber;
-    num max = int.parse(t.attributes['max']);
-    num min = int.parse(t.attributes['min']);
+    num serial = t.valueAsNumber!;
+    num max = int.parse(t.attributes['max']!);
+    num min = int.parse(t.attributes['min']!);
     if (serial > max || serial < min) {
       return false;
     }
@@ -534,12 +534,12 @@ validateInputs() {
 
 getInputs() {
   String serial = '';
-  InputElement t = querySelector("#siteid");
-  String siteid = t.value;
+  InputElement t = querySelector("#siteid") as InputElement;
+  String? siteid = t.value;
 
   if (CurrTest == 'tmx4') {
-    InputElement s = querySelector("#serial");
-    serial = s.value.padLeft(8, '0');
+    InputElement s = querySelector("#serial") as InputElement;
+    serial = s.value!.padLeft(8, '0');
   }
 
   Map out = {'siteid': siteid, 'address': siteid, 'serial': serial};
@@ -549,7 +549,7 @@ getInputs() {
 
 void starttest(event) {
   event.preventDefault();
-  ButtonElement button = event.target;
+  ButtonElement? button = event.target;
   bool validated = validateInputs();
 
   if (!validated) {
@@ -557,13 +557,13 @@ void starttest(event) {
     return;
   }
 
-  if (button.text == 'New test') {
-    InputElement t = querySelector("#siteid");
+  if (button!.text == 'New test') {
+    InputElement t = querySelector("#siteid") as InputElement;
     t.value = "";
     t.disabled = false;
     t.focus();
     if (CurrTest == 'tmx4') {
-      InputElement serial = querySelector('#serial');
+      InputElement serial = querySelector('#serial') as InputElement;
       serial.disabled = false;
       serial.value = '';
     }
@@ -576,7 +576,7 @@ void starttest(event) {
 
     hide('#file_available');
 
-    DivElement z = querySelector('#messages');
+    DivElement z = querySelector('#messages') as DivElement;
     while (z.children.length > 0) {
       z.children.removeLast();
     }
@@ -620,7 +620,7 @@ onResponse(HttpRequest request) {}
 void checkstatus() {
   String path = 'control.json';
   HttpRequest.getString(path).then((var resp) {
-    Map data = {};
+    Map? data = {};
     try {
       data = jsonDecode(resp);
     } on FormatException {
@@ -628,7 +628,7 @@ void checkstatus() {
       starttimer();
       return;
     }
-    if (data['status'] == 'done' && data['filename'] != null) {
+    if (data!['status'] == 'done' && data['filename'] != null) {
       doDoneStatus(data);
       return;
     } else if (data['status'] == 'new test') {
@@ -638,14 +638,14 @@ void checkstatus() {
       showmessages(data['messages']);
       if (data['address'] != null) {
         if (CurrTest != '') {
-          InputElement t = querySelector("#siteid");
+          InputElement t = querySelector("#siteid") as InputElement;
 //        t.value = "Testing - ${data['address']}";
           t.value = data['address'];
           if (t != null) {
             t.disabled = true;
           }
           if (CurrTest == 'tmx4') {
-            InputElement ie = querySelector("#serial");
+            InputElement? ie = querySelector("#serial") as InputElement?;
             if (ie != null) {
               var serial = data['serial'];
               if (serial != null && serial != '') {
@@ -654,7 +654,7 @@ void checkstatus() {
               ie.disabled = true;
             }
           }
-          ButtonElement button = querySelector("#testbutton");
+          ButtonElement? button = querySelector("#testbutton") as ButtonElement?;
           if (button != null) {
             button.text = "Test in progress";
             button.disabled = true;
@@ -664,22 +664,22 @@ void checkstatus() {
       starttimer();
       return;
     }
-    ButtonElement testbutton = querySelector("#testbutton");
+    ButtonElement testbutton = querySelector("#testbutton") as ButtonElement;
     testbutton.text = 'Retry';
     testbutton.disabled = false;
   }).catchError(noControlFile);
 }
 
 sizeMessageBlock() {
-  DivElement msgs = querySelector('#messageblock');
-  Element testing = querySelector('#testing');
-  Element top = querySelector('#top');
+  DivElement msgs = querySelector('#messageblock') as DivElement;
+  Element testing = querySelector('#testing')!;
+  Element top = querySelector('#top')!;
   //var clientheight = document.window.
 
-  DivElement messageContent = querySelector('#messages');
+  DivElement messageContent = querySelector('#messages') as DivElement;
   int height = testing.clientHeight + top.clientHeight;
 
-  int yavailable = window.innerHeight;
+  int yavailable = window.innerHeight!;
   int ht = yavailable - height;
   msgs.style.top = "${height}";
   //window.alert("setting content height to ${ht}");
@@ -692,28 +692,28 @@ starttimer() {
 }
 
 doDoneStatus(data) {
-  String filename = data['filename'];
+  String? filename = data['filename'];
   downloadFile = filename;
   //InputElement addressinput = querySelector('#address');
   //addressinput.disabled = true;
   //addressinput.value = "Completed: ${data['address']}";
   show('#file_available');
 
-  ButtonElement testbutton = querySelector("#testbutton");
+  ButtonElement testbutton = querySelector("#testbutton") as ButtonElement;
 
   testbutton.text = "New test";
   testbutton.disabled = false;
-  FormElement form = querySelector('#download_latest');
+  FormElement form = querySelector('#download_latest') as FormElement;
   form.method = "POST";
   form.action = 'cgi-bin/getfile.py?filename=${filename}';
-  DivElement msgs = querySelector('#messages');
+  DivElement msgs = querySelector('#messages') as DivElement;
   sizeMessageBlock();
   if (msgs.children.length > 0) {
     var z = new ParagraphElement();
     z.appendText("done");
     msgs.append(z);
     z.scrollIntoView();
-    AudioElement bell = querySelector("#bell");
+    AudioElement? bell = querySelector("#bell") as AudioElement?;
     if (bell != null) {
       bell.play();
     }
@@ -723,7 +723,7 @@ doDoneStatus(data) {
 }
 
 getFile(event) {
-  if (downloadFile != null && downloadFile.length > 3) {
+  if (downloadFile != null && downloadFile!.length > 3) {
     String download = 'cgi-bin/getfile.py?filename=${downloadFile}';
     HttpRequest.getString(download);
   }
@@ -735,13 +735,13 @@ noControlFile(event) {
   //t.disabled = true;
   //t.value = 'Press "New test" to begin.';
   window.alert('${event}');
-  ButtonElement button = querySelector("#testbutton");
+  ButtonElement button = querySelector("#testbutton") as ButtonElement;
   button.disabled = false;
   starttimer();
 }
 
 showmessages(List aList) {
-  DivElement liststart = querySelector('#messages');
+  DivElement liststart = querySelector('#messages') as DivElement;
   while (liststart.children.length > 0) {
     liststart.children.removeLast();
   }
