@@ -7,8 +7,10 @@ import 'package:intl/intl.dart';
 
 final pollFrequency = const Duration(seconds: 2);
 
-String? currentlogfilename;
-String? downloadFile;
+String currentlogfilename = "";
+String downloadFile = "";
+
+Timer timer = Timer(const Duration(seconds: 1), () => print('Timer init'));
 
 bool mainTimedOut = false;
 
@@ -27,6 +29,7 @@ hide(String selector) {
   Element? item = querySelector(selector);
   if (item != null) {
     item.hidden = true;
+    item.classes.add('hidden');
   }
 }
 
@@ -42,18 +45,40 @@ void main() {
 //  hide("#tmx4");
 //  hide("#tmx5");
 //  hide("#siteidinput");
+  currTest = '';
   hide("#testing");
   hide('#sysmaint');
   hide('#messageblock');
   showdate("#dt");
+
   ButtonElement tmx5button = querySelector("#test_tmx5") as ButtonElement;
   tmx5button.onClick.listen((e) {
     doTmx5(e);
   });
-  currTest = '';
+
+  ButtonElement tmx5nbutton = querySelector("#test_tmx5n") as ButtonElement;
+  tmx5nbutton.onClick.listen((e) {
+    doTmx5n(e);
+  });
+
+  ButtonElement qfambutton = querySelector("#test_Qfam") as ButtonElement;
+  qfambutton.onClick.listen((e) {
+    doQfam(e);
+  });
+
   ButtonElement tmx4button = querySelector("#test_tmx4") as ButtonElement;
   tmx4button.onClick.listen((e) {
     doTmx4(e);
+  });
+
+  ButtonElement tmx1button = querySelector("#test_tmx1") as ButtonElement;
+  tmx1button.onClick.listen((e) {
+    doTmx1(e);
+  });
+
+  ButtonElement tmx3button = querySelector("#test_tmx3") as ButtonElement;
+  tmx3button.onClick.listen((e) {
+    doTmx3(e);
   });
 
   ButtonElement files = querySelector("#manage_files") as ButtonElement;
@@ -110,11 +135,41 @@ doFiles(event) {
 doTmx4(event) {
   currTest = 'tmx4';
   show("#testing");
-  Element testing = querySelector("#testing")!;
-  testing.classes.remove('hidden');
+  show('#serial_entry');
+  // Element testing = querySelector("#testing")!;
+  // testing.classes.remove('hidden');
   enableTest();
 //  show("#siteidinput");
-  show('#tmx4');
+
+  //InputElement siteid = querySelector("#siteid");
+  hide('#main');
+  rtMainEnable();
+}
+
+doTmx1(event) {
+  currTest = 'tmx1';
+  show("#testing");
+  show('#serial_entry');
+  // Element testing = querySelector("#testing")!;
+  // testing.classes.remove('hidden');
+  enableTest();
+//  show("#siteidinput");
+
+  //InputElement siteid = querySelector("#siteid");
+  hide('#main');
+  rtMainEnable();
+}
+
+doTmx3(event) {
+  currTest = 'tmx3';
+  show("#testing");
+  show('#serial_entry');
+  show('#tmx3_type');
+  // Element testing = querySelector("#testing")!;
+  // testing.classes.remove('hidden');
+  enableTest();
+//  show("#siteidinput");
+
   //InputElement siteid = querySelector("#siteid");
   hide('#main');
   rtMainEnable();
@@ -136,13 +191,48 @@ enableTest() {
 
 doTmx5(event) {
   show("#testing");
+  hide("#serial_entry");
+  // Element s = querySelector()!;
+  // s.classes.add('hidden');
+  // s.hidden = true;
+
   currTest = 'tmx5';
-  Element testing = querySelector("#testing")!;
-  testing.classes.remove('hidden');
+  // Element testing = querySelector("#testing")!;
+  // testing.classes.remove('hidden');
   enableTest();
-//  show("#siteidinput");
-//  show('#tmx5');
-  hide("#tmx4");
+  InputElement serial = querySelector("#serial") as InputElement;
+  serial.value = '';
+  hide("#main");
+  rtMainEnable();
+}
+
+doTmx5n(event) {
+  show("#testing");
+  hide("#serial_entry");
+  // Element s = querySelector()!;
+  // s.classes.add('hidden');
+  // s.hidden = true;
+
+  currTest = 'tmx5n';
+  // Element testing = querySelector("#testing")!;
+  // testing.classes.remove('hidden');
+  enableTest();
+  InputElement serial = querySelector("#serial") as InputElement;
+  serial.value = '';
+  hide("#main");
+  rtMainEnable();
+}
+doQfam(event) {
+  show("#testing");
+  hide("#serial_entry");
+  // Element s = querySelector()!;
+  // s.classes.add('hidden');
+  // s.hidden = true;
+
+  currTest = 'Qfam';
+  // Element testing = querySelector("#testing")!;
+  // testing.classes.remove('hidden');
+  enableTest();
   InputElement serial = querySelector("#serial") as InputElement;
   serial.value = '';
   hide("#main");
@@ -522,7 +612,7 @@ validateInputs() {
   if (siteid > max || siteid < min) {
     return false;
   }
-  if (currTest == 'tmx4') {
+  if (['tmx4', 'tmx3', 'tmx1'].contains(currTest)) {
     InputElement t = querySelector("#serial") as InputElement;
     if (int.tryParse(t.value!) == null) {
       return false;
@@ -542,12 +632,42 @@ getInputs() {
   InputElement t = querySelector("#siteid") as InputElement;
   String? siteid = t.value;
 
-  if (currTest == 'tmx4') {
+// address is included for historical reasons
+  Map out = {'siteid': siteid, 'address': siteid, 'c': currTest};
+
+  if (['tmx4', 'tmx3', 'tmx1'].contains(currTest)) {
     InputElement s = querySelector("#serial") as InputElement;
     serial = s.value!.padLeft(8, '0');
+    out['serial'] = serial;
   }
-
-  Map out = {'siteid': siteid, 'address': siteid, 'serial': serial};
+  if (currTest == 'tmx3') {
+    String x3 = "";
+    ElementList radios = querySelectorAll('input[name="tmx3"]');
+    for (Element item in radios) {
+      item = item as RadioButtonInputElement;
+      if (item.checked != null) {
+        if (item.checked == true) {
+          x3 = item.value!;
+          break;
+        }
+      }
+    }
+    Element ch = querySelector("#channel_input")!;
+    ch = ch as TextInputElement;
+    String v = "";
+    var chv = [];
+    if (ch.value != null) {
+      v = ch.value!;
+      var s = v.split("-");
+      for (var i in s) {
+        chv.add(int.parse(i));
+      }
+    }
+    if (chv.isNotEmpty) {
+      out['channels'] = chv;
+    }
+    out['x3'] = x3;
+  }
 
   return out;
 }
@@ -602,6 +722,7 @@ void starttest(event) {
     //String address = getSiteId();
 
     String out = jsonEncode(getInputs());
+    starttimer();
     request.send(out);
 
 ////  HttpRequest.getString(path).then((data) {
@@ -692,12 +813,16 @@ sizeMessageBlock() {
 }
 
 starttimer() {
-  Timer(pollFrequency, checkstatus);
+  if (!timer.isActive) {
+    timer = Timer(pollFrequency, checkstatus);
+  }
 }
 
 doDoneStatus(data) {
   String? filename = data['filename'];
-  downloadFile = filename;
+  if (filename != null) {
+    downloadFile = filename;
+  }
   //InputElement addressinput = querySelector('#address');
   //addressinput.disabled = true;
   //addressinput.value = "Completed: ${data['address']}";
@@ -727,7 +852,7 @@ doDoneStatus(data) {
 }
 
 getFile(event) {
-  if (downloadFile != null && downloadFile!.length > 3) {
+  if (downloadFile.length > 3) {
     String download = '/cgi-bin/getfile.py?filename=${downloadFile}';
     HttpRequest.getString(download);
   }

@@ -8,46 +8,79 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-var testing = true
+var filesloc = ""
+var archives = ""
+
+func makeReportDirs() {
+	curdir, _ := os.Getwd()
+	sp := strings.Split(curdir, "/")
+	nl := []string{}
+	found := false
+	for k, v := range sp {
+		if v == "home" {
+			found = true
+			nl = append(nl, v)
+			nl = append(nl, sp[k+1])
+			break
+		}
+		if !found {
+			nl = append(nl, v)
+		}
+	}
+	homedir := "/" + filepath.Join(nl...)
+	filesloc = filepath.Join(homedir, "acc_tester", "reports")
+	archives = filepath.Join(homedir, "acc_tester", "archives")
+	os.MkdirAll(filesloc, 0755)
+	os.MkdirAll(archives, 0755)
+}
 
 func main() {
+	assureControlFile()
+	makeReportDirs()
+
 	r := gin.Default()
 
-	// r.Static("/", "./build")
 	r.StaticFile("/", "./build/index.html")
 	r.StaticFile("/index.html", "./build/index.html")
+
+	// served folders
 	r.Static("/media", "./build/media")
 	r.Static("/packages", "./build/packages")
 
-	// r.StaticFile("/media/clong-2.wav", "./media/clong-2.wav")
-	// r.StaticFile("/packages/browser/dart.js", "./packages/browser/dart.js")
-
 	r.StaticFile("/psctester.css", "./build/psctester.css")
 	r.StaticFile("/psctester.dart.js", "./build/psctester.dart.js")
-
 	r.StaticFile("script_ver", "./script_ver")
 	r.StaticFile("version_tag.txt", "./version_tag.txt")
-	// r.StaticFile("/", ".build/index.html")
 
 	// development files
 	r.StaticFile("/psctester.dart", "./build/psctester.dart")
 	r.StaticFile("/psctester.dart.bootstrap.js", "./build/psctester.dart.bootstrap.js")
 	r.StaticFile("/psctester.sound.ddc.js", "./build/psctester.sound.ddc.js")
 	r.StaticFile("/psctester.sound.ddc.js.map", "./build/psctester.sound.ddc.js.map")
-	// r.StaticFile("/psctester.dart.js.map", "./psctester.dart.js.map")
-	// r.StaticFile("/psctester.dart.js.deps", "./psctester.dart.js.deps")
-	// r.StaticFile("/psctester.dart", "./psctester.dart")
 
 	r.GET("/control.json",
 		func(c *gin.Context) {
 			d, _ := os.ReadFile("control.json")
 			c.String(200, "%s", string(d))
+		})
+
+	r.POST("cgi-bin/getfile.py",
+		func(c *gin.Context) {
+			filename := c.Query("filename")
+			t, err := os.ReadFile(filename)
+			if err == nil {
+				c.Header("Content-Disposition", "attachment; filename="+filename)
+				c.String(http.StatusOK, "%s", string(t))
+			} else {
+				c.String(http.StatusNotFound, "file not found")
+			}
 		})
 
 	r.GET("/cgi-bin/ip_addr.py",
@@ -153,7 +186,12 @@ func main() {
 			"message": "pong",
 		})
 	})
-	r.Run(":5000") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+	port := "8080"
+	if os.Getenv("PSC_PORT") != "" {
+		port = os.Getenv("PSC_PORT")
+	}
+
+	r.Run(":" + port) // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
 
 type ControlFile struct {
@@ -229,4 +267,8 @@ func makeDate(dt DateList) time.Time {
 		month = time.December
 	}
 	return time.Date(y, month, d, hr, min, sec, msec, time.UTC)
+}
+
+func assureControlFile() {
+	os.WriteFile("control.json", []byte("{}"), 0644)
 }
