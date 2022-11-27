@@ -4,7 +4,7 @@ import os
 
 # for debugging
 #import cgitb
-#cgitb.enable()
+# cgitb.enable()
 
 from filesloc import filesloc
 
@@ -14,11 +14,9 @@ filename = form['filename'].value
 
 if filename:
     os.chdir(filesloc)
-    print ('Content-Type: text/csv\nContent-Disposition: attachment; filename="{}"\n'.format(filename))
+    print('Content-Type: text/csv\nContent-Disposition: attachment; filename="{}"\n'.format(filename))
     with open(filename, 'r') as testfile:
         z = testfile.readlines()
     for k in z:
-        print ("{}".format(k.strip()))
+        print("{}".format(k.strip()))
     sys.stdout.flush()
- 
-

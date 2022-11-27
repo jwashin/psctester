@@ -1,3 +1,5 @@
 build*
-control.json
+control.json*
 *pyc
+.dart_tool*
+cgi-bin/__pycache__*

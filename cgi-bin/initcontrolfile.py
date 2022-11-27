@@ -1,10 +1,12 @@
 import logwriter
 import sys
 
+
 def initfile():
 
     lw = logwriter.logwriter
     lw.clear()
+
 
 initfile()
 

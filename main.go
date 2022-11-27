@@ -47,6 +47,7 @@ func main() {
 
 	r := gin.Default()
 
+	// index
 	r.StaticFile("/", "./build/index.html")
 	r.StaticFile("/index.html", "./build/index.html")
 
@@ -54,12 +55,13 @@ func main() {
 	r.Static("/media", "./build/media")
 	r.Static("/packages", "./build/packages")
 
+	// web app
 	r.StaticFile("/psctester.css", "./build/psctester.css")
 	r.StaticFile("/psctester.dart.js", "./build/psctester.dart.js")
 	r.StaticFile("script_ver", "./script_ver")
 	r.StaticFile("version_tag.txt", "./version_tag.txt")
 
-	// development files
+	// web app development files
 	r.StaticFile("/psctester.dart", "./build/psctester.dart")
 	r.StaticFile("/psctester.dart.bootstrap.js", "./build/psctester.dart.bootstrap.js")
 	r.StaticFile("/psctester.sound.ddc.js", "./build/psctester.sound.ddc.js")
@@ -74,7 +76,7 @@ func main() {
 	r.POST("cgi-bin/getfile.py",
 		func(c *gin.Context) {
 			filename := c.Query("filename")
-			t, err := os.ReadFile(filename)
+			t, err := os.ReadFile(filepath.Join(filesloc, filename))
 			if err == nil {
 				c.Header("Content-Disposition", "attachment; filename="+filename)
 				c.String(http.StatusOK, "%s", string(t))
@@ -178,7 +180,7 @@ func main() {
 		})
 
 	r.GET("/flutter_service_worker.js", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{})
+		c.String(http.StatusOK, "")
 	})
 
 	r.GET("/ping", func(c *gin.Context) {
