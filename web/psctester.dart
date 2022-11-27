@@ -16,7 +16,7 @@ bool mainTimedOut = false;
 
 String currTest = '';
 
-List selectionModes = [
+final List<String> selectionModes = [
   'select none',
   "today",
   "the last seven days",
@@ -222,6 +222,7 @@ doTmx5n(event) {
   hide("#main");
   rtMainEnable();
 }
+
 doQfam(event) {
   show("#testing");
   hide("#serial_entry");
@@ -266,10 +267,9 @@ doMaintenance(event) {
   });
 
   ButtonElement reinitbutton = querySelector("#reinit") as ButtonElement;
-  reinitbutton.onClick.listen((e) {
-    HttpRequest.getString("/cgi-bin/initcontrolfile.py").then((var resp) {
-      window.alert('Control file reinitialized!');
-    });
+  reinitbutton.onClick.listen((e) async {
+    await HttpRequest.getString("/cgi-bin/initcontrolfile.py");
+    window.alert('Control file reinitialized!');
   });
 }
 
@@ -352,25 +352,17 @@ showdate(loc) {
   HttpRequest.getString(path).then((var resp) {
     String dtstring = jsonDecode(resp)['datetime'];
     DateTime value = DateTime.parse(dtstring).toLocal();
-
-//    var formatter = new DateFormat('');
     String txt = DateFormat.yMEd().add_jms().format(value);
-
-//    var m = value.minute.toString();
-//    if (m.length < 2){
-//      m = "0${m}";
-//    }
-//    String slug = "${value.year.toString()}-${value.month.toString().padLeft(2,'0')}-${value.day.toString().padLeft(2,'0')}";
     dt!.text = txt;
   });
 }
 
-showfiles() {
+showfiles() async {
   String path = 'cgi-bin/fileslist.py';
-  SelectElement modselect = querySelector('#modselect') as SelectElement;
+  Element modselect = querySelector('#modselect') as SelectElement;
 
   if (modselect.children.isEmpty) {
-    for (String mode in selectionModes as Iterable<String>) {
+    for (var mode in selectionModes) {
       OptionElement o = OptionElement();
       o.text = mode;
       o.value = mode;
@@ -380,18 +372,17 @@ showfiles() {
 
   clearFiles();
 
-//  ButtonElement button = event.target;
-//  String t = button.text;
+  SelectElement downloads = querySelector("#downloads") as SelectElement;
 
-  SelectElement? downloads = querySelector("#downloads") as SelectElement?;
-  HttpRequest.getString(path).then((var resp) {
-    var data = jsonDecode(resp)['files'];
+  var resp = await HttpRequest.getString(path);
 
-    for (String filename in data) {
-      OptionElement o = OptionElement();
-      o.text = filename;
-      o.value = filename;
-      downloads!.children.add(o);
+  var data = jsonDecode(resp)['files'];
+
+  for (String filename in data) {
+    OptionElement o = OptionElement();
+    o.text = filename;
+    o.value = filename;
+    downloads.children.add(o);
 
 //        TableRowElement r = downloads.addRow();
 //        TableCellElement left = r.addCell();
@@ -404,48 +395,49 @@ showfiles() {
 //        b.appendText("download");
 //        f.children.add(b);
 //        left.children.add(f);
-    }
-  });
+  }
 
 //  SelectElement modselect = querySelector('#modselect');
   show('#modselect');
 }
 
-archiveFiles(Event event) {
+archiveFiles(Event event) async {
   event.preventDefault();
   event.stopPropagation();
-  FormElement? theForm = querySelector('#filesform') as FormElement?;
+  FormElement theForm = querySelector('#filesform') as FormElement;
   String action = '/cgi-bin/archive_files.py';
   SelectElement downloads = querySelector("#downloads") as SelectElement;
   int count = 0;
-  for (OptionElement o in downloads.children as Iterable<OptionElement>) {
+  for (var o in downloads.children) {
+    o = o as OptionElement;
     if (o.selected == true) {
       count += 1;
     }
   }
-  bool resp = window.confirm('Moving $count files to Archive. Continue?');
-  if (resp == false) {
-    return;
-  }
-
-  FormData data = FormData(theForm);
-  HttpRequest.request(action, method: theForm!.method, sendData: data)
-      .then((HttpRequest req) {
+  if (count >= 1) {
+    bool resp = window.confirm('Moving $count files to Archive. Continue?');
+    if (resp == false) {
+      return;
+    }
+    FormData data = FormData(theForm);
+    await HttpRequest.request(action, method: theForm.method, sendData: data);
     showfiles();
     SelectElement modselect = querySelector('#modselect') as SelectElement;
     modselect.selectedIndex = 0;
-  });
+  }
 }
 
 makeZipfile(Event event) {
   FormElement theForm = querySelector('#filesform') as FormElement;
   theForm.action = '/cgi-bin/get_zip.py';
   SelectElement downloads = querySelector("#downloads") as SelectElement;
-  if (downloads.value!.isEmpty) {
-    event.preventDefault();
-    event.stopPropagation();
-    window.alert('Please select files for download,');
-    return;
+  if (downloads.value != null) {
+    if (downloads.value!.isEmpty) {
+      event.preventDefault();
+      event.stopPropagation();
+      window.alert('Please select files for download,');
+      return;
+    }
   }
 //  HttpRequest request = new HttpRequest();
 //
@@ -481,23 +473,26 @@ makeZipfile(Event event) {
 
 doFileSelection() {
   //List SelectionModes = ['select none', "today's files", "this week's files", 'select all'];
-  SelectElement? downloads = querySelector("#downloads") as SelectElement?;
+  var downloads = querySelector("#downloads") as SelectElement;
   SelectElement modselect = querySelector('#modselect') as SelectElement;
   if (modselect.value == selectionModes[0]) {
-    for (OptionElement o in downloads!.children as Iterable<OptionElement>) {
+    for (var o in downloads.children) {
       //select none
+      o = o as OptionElement;
       o.selected = false;
     }
   } else if (modselect.value == selectionModes[3]) {
     //select all
-    for (OptionElement o in downloads!.children as Iterable<OptionElement>) {
+    for (var o in downloads.children) {
+      o = o as OptionElement;
       o.selected = true;
     }
   } else if (modselect.value == selectionModes[1]) {
     //select today
-    sortOptions(downloads!, datesort);
+    sortOptions(downloads, datesort);
     String today = sformat(DateTime.now());
-    for (OptionElement o in downloads.children as Iterable<OptionElement>) {
+    for (Element o in downloads.children) {
+      o = o as OptionElement;
       Map meta = metaParse(o.value);
       if (meta['date'] == today) {
         o.selected = true;
@@ -507,9 +502,10 @@ doFileSelection() {
     }
   } else if (modselect.value == selectionModes[2]) {
     //select last seven days
-    sortOptions(downloads!, datesort);
+    sortOptions(downloads, datesort);
     List lastseven = lastSevenDays();
-    for (OptionElement o in downloads.children as Iterable<OptionElement>) {
+    for (var o in downloads.children) {
+      o = o as OptionElement;
       if (lastseven.contains(metaParse(o.value)['date'])) {
         o.selected = true;
       } else {
@@ -517,9 +513,10 @@ doFileSelection() {
       }
     }
   } else if (modselect.value == selectionModes[4]) {
-    sortOptions(downloads!, sitesort);
+    sortOptions(downloads, sitesort);
   } else if (modselect.value == selectionModes[5]) {
-    for (OptionElement o in downloads!.children as Iterable<OptionElement>) {
+    for (var o in downloads.children) {
+      o = o as OptionElement;
       if (o.selected == true) {
         o.selected = false;
       } else {
@@ -530,8 +527,9 @@ doFileSelection() {
 }
 
 sortOptions(SelectElement element, Comparator compare) {
-  List myList = [];
-  for (OptionElement item in element.children as Iterable<OptionElement>) {
+  var myList = [];
+  for (var item in element.children) {
+    item = item as OptionElement;
     myList.add(item.value);
   }
   myList.sort(compare);
@@ -539,7 +537,7 @@ sortOptions(SelectElement element, Comparator compare) {
   while (element.children.isNotEmpty) {
     element.children.removeLast();
   }
-  for (String item in myList as Iterable<String>) {
+  for (var item in myList) {
     OptionElement o = OptionElement();
     o.text = item;
     o.value = item;
@@ -556,7 +554,7 @@ lastSevenDays() {
     count += 1;
   }
   List newList = [];
-  for (DateTime d in theList as Iterable<DateTime>) {
+  for (var d in theList) {
     newList.add(sformat(d));
   }
   return newList;

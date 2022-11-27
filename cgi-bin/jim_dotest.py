@@ -5,6 +5,7 @@ import sys
 import os
 import random
 import cgi
+from filesloc import filesloc
 
 
 def dotest():
@@ -57,13 +58,12 @@ def dotest():
     lw.setfilename(filename)
 
     data = ['channel1, 0.345, 0.034', 'channel2, 0.043, 0.44']
-    with open('../'+filename, 'w') as outfile:
+    with open(os.path.join(filesloc, filename), 'w') as outfile:
         for k in data:
             outfile.write(k + '\n')
 
     lw.message('done')
     return True
-
 
 s = dotest()
 

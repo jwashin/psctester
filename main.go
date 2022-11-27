@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"encoding/json"
@@ -36,7 +37,7 @@ func makeReportDirs() {
 	}
 	homedir := "/" + filepath.Join(nl...)
 	filesloc = filepath.Join(homedir, "acc_tester", "reports")
-	archives = filepath.Join(homedir, "acc_tester", "archives")
+	archives = filepath.Join(homedir, "acc_tester", "archive")
 	os.MkdirAll(filesloc, 0755)
 	os.MkdirAll(archives, 0755)
 }
@@ -81,8 +82,58 @@ func main() {
 				c.Header("Content-Disposition", "attachment; filename="+filename)
 				c.String(http.StatusOK, "%s", string(t))
 			} else {
-				c.String(http.StatusNotFound, "file not found")
+				c.String(http.StatusNotFound, err.Error())
 			}
+		})
+
+	r.POST("/cgi-bin/archive_files.py",
+		func(c *gin.Context) {
+			r := c.PostFormArray("files")
+			outs := []string{}
+			for _, file := range r {
+				oldfile := filepath.Join(filesloc, file)
+				newfile := filepath.Join(archives, file)
+				err := os.Rename(oldfile, newfile)
+				if err != nil {
+					outs = append(outs, err.Error())
+				}
+			}
+			if len(outs) > 0 {
+				c.String(http.StatusInternalServerError, "%s", strings.Join(outs, ";"))
+			}
+			c.String(http.StatusOK, "Archived: %s", strings.Join(r, ";"))
+		})
+
+	r.POST("/cgi-bin/get_zip.py",
+		func(c *gin.Context) {
+			r := c.PostFormArray("files")
+			outs := []string{}
+
+			buf := new(bytes.Buffer)
+			w := zip.NewWriter(buf)
+
+			for _, v := range r {
+				file := filepath.Join(filesloc, v)
+				data, err := os.ReadFile(file)
+				if err != nil {
+					outs = append(outs, err.Error())
+					break
+				}
+				f, err2 := w.Create(v)
+				if err2 != nil {
+					outs = append(outs, err2.Error())
+					break
+				}
+				f.Write(data)
+			}
+			w.Close()
+
+			if len(outs) > 0 {
+				c.String(http.StatusInternalServerError, "%s", strings.Join(outs, ";"))
+			}
+			date := time.Now().Format(time.RFC3339)
+			c.Header("Content-Disposition", "attachment; filename=acc_"+date+".zip")
+			c.Data(http.StatusOK, "application/zip", buf.Bytes())
 		})
 
 	r.GET("/cgi-bin/ip_addr.py",
@@ -103,6 +154,29 @@ func main() {
 			err := cmd.Wait()
 			if err != nil {
 				c.String(http.StatusInternalServerError, "could not obtain ip address")
+			}
+			s = strings.ReplaceAll(s, "Content-type: text/json\n\n", "")
+			c.String(http.StatusOK, "%s", s)
+		})
+
+	r.GET("/cgi-bin/fileslist.py",
+		func(c *gin.Context) {
+			cmd := exec.Command("python3", "./cgi-bin/fileslist.py")
+			cmdReader, _ := cmd.StdoutPipe()
+			scanner := bufio.NewScanner(cmdReader)
+			done := make(chan string)
+			go func() {
+				tst := ""
+				for scanner.Scan() {
+					tst += scanner.Text() + "\n"
+				}
+				done <- tst
+			}()
+			cmd.Start()
+			s := <-done
+			err := cmd.Wait()
+			if err != nil {
+				c.String(http.StatusInternalServerError, "file acquisition error")
 			}
 			s = strings.ReplaceAll(s, "Content-type: text/json\n\n", "")
 			c.String(http.StatusOK, "%s", s)
