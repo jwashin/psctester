@@ -10,7 +10,7 @@ final pollFrequency = const Duration(seconds: 2);
 String currentlogfilename = "";
 String downloadFile = "";
 
-Timer timer = Timer(const Duration(seconds: 1), () => print('Timer init'));
+Timer timer = Timer(const Duration(seconds: 1), () => 'OK');
 
 bool mainTimedOut = false;
 
@@ -250,18 +250,18 @@ rtMainEnable() {
 doMaintenance(event) {
   hide("#main");
   hide('#messageblock');
-  Element maint = querySelector("#sysmaint")!;
+  var maint = querySelector("#sysmaint") as Element;
   maint.classes.remove('hidden');
   show('#sysmaint');
   showdate('#dt1');
   getVersions();
   getAddresses();
-  ButtonElement settime = querySelector("#time_fix") as ButtonElement;
+  var settime = querySelector("#time_fix") as ButtonElement;
   settime.onClick.listen((e) {
     fixTime(e);
   });
 
-  ButtonElement returnbutton = querySelector("#go_main") as ButtonElement;
+  var returnbutton = querySelector("#go_main") as ButtonElement;
   returnbutton.onClick.listen((e) {
     returnToMain(e);
   });
@@ -590,12 +590,6 @@ sformat(adate) {
   String stoday = "${adate.year}${month}${day}";
   return stoday;
 }
-
-//getSiteId() {
-//  InputElement t = querySelector("#siteid");
-//  String site = t.value;
-//  return site;
-//}
 
 validateInputs() {
   InputElement t = querySelector("#siteid") as InputElement;

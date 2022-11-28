@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -48,25 +49,32 @@ func main() {
 
 	r := gin.Default()
 
+	wwwroot := "./build"
+
+	_, err := os.Stat("build")
+	if errors.Is(err, os.ErrNotExist) {
+		wwwroot = ""
+	}
+
 	// index
-	r.StaticFile("/", "./build/index.html")
-	r.StaticFile("/index.html", "./build/index.html")
+	r.StaticFile("/", filepath.Join(wwwroot, "index.html"))
+	r.StaticFile("/index.html", filepath.Join(wwwroot, "index.html"))
 
 	// served folders
-	r.Static("/media", "./build/media")
-	r.Static("/packages", "./build/packages")
+	r.Static("/media", filepath.Join(wwwroot, "media"))
+	r.Static("/packages", filepath.Join(wwwroot, "packages"))
 
 	// web app
-	r.StaticFile("/psctester.css", "./build/psctester.css")
-	r.StaticFile("/psctester.dart.js", "./build/psctester.dart.js")
+	r.StaticFile("/psctester.css", filepath.Join(wwwroot, "psctester.css"))
+	r.StaticFile("/psctester.dart.js", filepath.Join(wwwroot, "psctester.dart.js"))
 	r.StaticFile("script_ver", "./script_ver")
 	r.StaticFile("version_tag.txt", "./version_tag.txt")
 
 	// web app development files
-	r.StaticFile("/psctester.dart", "./build/psctester.dart")
-	r.StaticFile("/psctester.dart.bootstrap.js", "./build/psctester.dart.bootstrap.js")
-	r.StaticFile("/psctester.sound.ddc.js", "./build/psctester.sound.ddc.js")
-	r.StaticFile("/psctester.sound.ddc.js.map", "./build/psctester.sound.ddc.js.map")
+	r.StaticFile("/psctester.dart", filepath.Join(wwwroot, "psctester.dart"))
+	r.StaticFile("/psctester.dart.bootstrap.js", filepath.Join(wwwroot, "psctester.dart.bootstrap.js"))
+	r.StaticFile("/psctester.sound.ddc.js", filepath.Join(wwwroot, "psctester.sound.ddc.js"))
+	r.StaticFile("/psctester.sound.ddc.js.map", filepath.Join(wwwroot, "psctester.sound.ddc.js.map"))
 
 	r.GET("/control.json",
 		func(c *gin.Context) {
