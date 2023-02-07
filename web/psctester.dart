@@ -749,10 +749,12 @@ void checkstatus() {
     if (data!['status'] == 'done' && data['filename'] != null) {
       doDoneStatus(data);
       return;
-    } else if (data['status'] == 'new test') {
-      starttimer();
-      return;
-    } else if (data['status'] == 'tests in progress') {
+    } 
+    // if (data['status'] == 'new test') {
+    //   starttimer();
+    //   return;
+    if (data['status'] == 'tests in progress'||data['status'] == 'new test') {
+      // starttimer();
       showmessages(data['messages']);
       if (data['address'] != null) {
         if (currTest != '') {
