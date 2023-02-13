@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mime"
 	"net/http"
 	"os"
 	"os/exec"
@@ -48,6 +49,9 @@ func main() {
 	makeReportDirs()
 
 	r := gin.Default()
+	mime.AddExtensionType(".dart.js", "text/javascript")
+	mime.AddExtensionType(".js", "text/javascript")
+	mime.AddExtensionType(".css", "text/css")
 
 	wwwroot := "./build"
 
@@ -58,7 +62,21 @@ func main() {
 
 	// index
 	r.StaticFile("/", filepath.Join(wwwroot, "index.html"))
-	r.StaticFile("/index.html", filepath.Join(wwwroot, "index.html"))
+
+	// static files in www root
+	for _, v := range []string{
+		"index.html",
+		"favicon.ico",
+		"favicon-32x32.png",
+		"favicon-16x16.png",
+		"apple-touch-icon.png",
+		"android-chrome-512x512.png",
+		"android-chrome-192x192.png",
+		"site.webmanifest",
+		"about.txt",
+	} {
+		r.StaticFile("/"+v, filepath.Join(wwwroot, v))
+	}
 
 	// served folders
 	r.Static("/media", filepath.Join(wwwroot, "media"))
@@ -72,9 +90,9 @@ func main() {
 
 	// web app development files
 	r.StaticFile("/psctester.dart", filepath.Join(wwwroot, "psctester.dart"))
-	r.StaticFile("/psctester.dart.bootstrap.js", filepath.Join(wwwroot, "psctester.dart.bootstrap.js"))
-	r.StaticFile("/psctester.sound.ddc.js", filepath.Join(wwwroot, "psctester.sound.ddc.js"))
-	r.StaticFile("/psctester.sound.ddc.js.map", filepath.Join(wwwroot, "psctester.sound.ddc.js.map"))
+	r.StaticFile("/psctester.dart.js.deps", filepath.Join(wwwroot, "psctester.dart.js.deps"))
+	// r.StaticFile("/psctester.sound.ddc.js", filepath.Join(wwwroot, "psctester.sound.ddc.js"))
+	r.StaticFile("/psctester.dart.js.map", filepath.Join(wwwroot, "psctester.dart.js.map"))
 
 	r.GET("/control.json",
 		func(c *gin.Context) {

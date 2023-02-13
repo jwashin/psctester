@@ -21,6 +21,7 @@ def dotest():
     print("indata was {} ({})".format(indata, z))
 
     address = indata['siteid']
+    serial = indata['serial']
 
     lw.message('starting up')
 
@@ -34,7 +35,7 @@ def dotest():
 
 # lw.setaddress(address)
 
-    lw.message('Address = {}'.format(address))
+    lw.setaddress(address)
 
     # time.sleep(600)
 

@@ -10,7 +10,9 @@ final pollFrequency = const Duration(seconds: 2);
 String currentlogfilename = "";
 String downloadFile = "";
 
-Timer timer = Timer(const Duration(seconds: 1), () => 'OK');
+// Init the global timer with nothing just so it's here. 
+// It only stops when we see "done". It restarts every time we checkstatus.
+Timer timer = Timer(const Duration(seconds: 0), () => 'OK');
 
 bool mainTimedOut = false;
 
@@ -722,7 +724,7 @@ void starttest(event) {
 //    top.scrollIntoView();
 //  });
 
-    Timer(Duration(seconds: 5), checkstatus);
+    // timer = Timer(Duration(seconds: 5), checkstatus);
   }
 }
 
@@ -733,14 +735,14 @@ mainTimeout() {
 //  document.window.location = loc;
 }
 
-// this is the return from starting a test 
+// this is the return from starting a test
 // it doesn't have to do anything, since test status is in control.json
 onResponse(HttpRequest request) {}
 
-
-// TODO: put the display in "test in progress" mode
+// put the display in "test in progress" mode
 // if status is "tests in progress" at startup
 void checkstatus() {
+  starttimer();
   String path = 'control.json';
   HttpRequest.getString(path).then((var resp) {
     Map? data = {};
@@ -748,49 +750,60 @@ void checkstatus() {
       data = jsonDecode(resp);
     } on FormatException {
       // got incomplete JSON file
-      starttimer();
+      // starttimer();
       return;
     }
     if (data!['status'] == 'done' && data['filename'] != null) {
       doDoneStatus(data);
       return;
-    } 
-    // if (data['status'] == 'new test') {
-    //   starttimer();
-    //   return;
-    if (data['status'] == 'tests in progress'||data['status'] == 'new test') {
-      // starttimer();
+      // } else if (data['status'] == 'new test') {
+      //   starttimer();
+      //   return;
+    } else if (data['status'] == 'tests in progress'){
+      // if (data['status'] == 'tests in progress') {
+      show('#testing');
+      hide("#main");
+      hide('#serial_entry');
       showmessages(data['messages']);
-      if (data['address'] != null) {
-        if (currTest != '') {
-          InputElement t = querySelector("#siteid") as InputElement;
-//        t.value = "Testing - ${data['address']}";
-          t.value = data['address'];
-          t.disabled = true;
-          if (currTest == 'tmx4') {
-            InputElement? ie = querySelector("#serial") as InputElement?;
-            if (ie != null) {
-              var serial = data['serial'];
-              if (serial != null && serial != '') {
-                ie.value = serial;
-              }
-              ie.disabled = true;
-            }
-          }
-          ButtonElement? button =
-              querySelector("#testbutton") as ButtonElement?;
-          if (button != null) {
-            button.text = "Test in progress";
-            button.disabled = true;
-          }
-        }
-      }
       starttimer();
-      return;
+      if (data['address'] != null) {
+        InputElement t = querySelector('#siteid') as InputElement;
+        t.value = data['address'];
+        t.disabled = true;
+      
+        show('#messageblock');
+        rtMainEnable();
+        // // window.alert("test in progress");
+        // if (currTest != '') {
+        //   InputElement t = querySelector("#siteid") as InputElement;
+        //   t.value = "Testing - ${data['address']}";
+        //   // t.value = data['address'];
+        //   t.disabled = true;
+        //   show("#siteid");
+        //   if (data['serial'] != null) {
+        //     InputElement? ie = querySelector("#serial") as InputElement?;
+        //     if (ie != null) {
+        //       var serial = data['serial'];
+        //       if (serial != null && serial != '') {
+        //         ie.value = serial;
+        //       }
+        //       ie.disabled = true;
+        //       show("#serial");
+        //     }
+        //   }
+        ButtonElement? button = querySelector("#testbutton") as ButtonElement?;
+        if (button != null) {
+          button.text = "Test in progress";
+          button.disabled = true;
+          show("#testbutton");
+        }
+        // }
+      }
+      // return;
     }
-    ButtonElement testbutton = querySelector("#testbutton") as ButtonElement;
-    testbutton.text = 'Retry';
-    testbutton.disabled = false;
+    // ButtonElement testbutton = querySelector("#testbutton") as ButtonElement;
+    // testbutton.text = 'Retry';
+    // testbutton.disabled = false;
   }).catchError(noControlFile);
 }
 
@@ -818,6 +831,7 @@ starttimer() {
 }
 
 doDoneStatus(data) {
+  timer.cancel();
   String? filename = data['filename'];
   if (filename != null) {
     downloadFile = filename;

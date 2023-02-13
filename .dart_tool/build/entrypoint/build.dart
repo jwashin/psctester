@@ -45,10 +45,8 @@ final _builders = <_i1.BuilderApplication>[
   _i1.apply(
     r'build_web_compilers:ddc',
     [
-      _i3.ddcKernelBuilderUnsound,
-      _i3.ddcBuilderUnsound,
-      _i3.ddcKernelBuilderSound,
-      _i3.ddcBuilderSound,
+      _i3.ddcKernelBuilder,
+      _i3.ddcBuilder,
     ],
     _i1.toAllPackages(),
     isOptional: true,
@@ -62,8 +60,7 @@ final _builders = <_i1.BuilderApplication>[
   _i1.apply(
     r'build_web_compilers:sdk_js',
     [
-      _i3.sdkJsCompileUnsound,
-      _i3.sdkJsCompileSound,
+      _i3.sdkJsCompile,
       _i3.sdkJsCopyRequirejs,
     ],
     _i1.toNoneByDefault(),
