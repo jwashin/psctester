@@ -3,7 +3,7 @@ Just unpack this as a folder under /home/pi
 If you want to recompile the binary, psctester, do the following.
 
 wget https://dl.google.com/go/go1.18.8.linux-armv6l.tar.gz -O go.tar.gz
-(this is the latest version available as if November, 2022)
+(this is the latest version available as of November, 2022)
 later versions of go will probably work fine
 
 sudo rm -rf /usr/local/go
