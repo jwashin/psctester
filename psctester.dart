@@ -113,7 +113,7 @@ void main() {
   //  ButtonElement filesbutton = document.querySelector("#downloads_button");
   // filesbutton.onClick.listen(showfiles);
 
-  // the next block contains the nost recent version of this
+  // TODO: the next block contains the nost recent version of this
 
   // window.addEventListener(
   //   'onResize',
@@ -298,7 +298,8 @@ void doMaintenance(Event event) {
     fixTime(e);
   });
 
-  var returnbutton = document.querySelector("#go_main") as HTMLButtonElement;
+  HTMLButtonElement returnbutton =
+      document.querySelector("#go_main") as HTMLButtonElement;
   returnbutton.onClick.listen((e) {
     returnToMain(e);
   });
