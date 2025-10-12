@@ -89,12 +89,12 @@ func main() {
 	mux.Handle("/packages/", http.StripPrefix("/packages/", http.FileServer(http.Dir(packagesDir))))
 
 	// web app
-	mux.HandleFunc("/psctester.css", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.css"))
-	})
-	mux.HandleFunc("/psctester.dart.js", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.dart.js"))
-	})
+	// mux.HandleFunc("/psctester.css", func(w http.ResponseWriter, r *http.Request) {
+	// 	http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.css"))
+	// })
+	// mux.HandleFunc("/psctester.dart.js", func(w http.ResponseWriter, r *http.Request) {
+	// 	http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.dart.js"))
+	// })
 	mux.HandleFunc("/script_ver", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "./script_ver")
 	})
@@ -103,18 +103,18 @@ func main() {
 	})
 
 	// web app development files
-	mux.HandleFunc("/psctester.dart", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.dart"))
-	})
-	mux.HandleFunc("/psctester.dart.js.deps", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.dart.js.deps"))
-	})
+	// mux.HandleFunc("/psctester.dart", func(w http.ResponseWriter, r *http.Request) {
+	// 	http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.dart"))
+	// })
+	// mux.HandleFunc("/psctester.dart.js.deps", func(w http.ResponseWriter, r *http.Request) {
+	// 	http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.dart.js.deps"))
+	// })
 	// mux.HandleFunc("/psctester.sound.ddc.js", func(w http.ResponseWriter, r *http.Request) {
 	// 	http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.sound.ddc.js"))
 	// })
-	mux.HandleFunc("/psctester.dart.js.map", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.dart.js.map"))
-	})
+	// mux.HandleFunc("/psctester.dart.js.map", func(w http.ResponseWriter, r *http.Request) {
+	// 	http.ServeFile(w, r, filepath.Join(wwwroot, "psctester.dart.js.map"))
+	// })
 
 	mux.HandleFunc("/control.json", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
