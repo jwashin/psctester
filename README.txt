@@ -34,6 +34,10 @@ but you only need it if you change the javascript in the web folder.
 if you change anything in the web folder, run 
     $ webdev build
 from the main folder (with pubspec.yaml)
+
+To compile the main javascript file from dart, 
+    $ dart compile js psctester.dart -o psctester.dart.js
+
 you might need to do
     dart pub global activate webdev
 When you run build, the stuff in the web folder gets compiled to javascript and 

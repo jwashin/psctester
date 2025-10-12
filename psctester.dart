@@ -113,15 +113,17 @@ void main() {
   //  ButtonElement filesbutton = document.querySelector("#downloads_button");
   // filesbutton.onClick.listen(showfiles);
 
-  window.addEventListener(
-    'onResize',
-    (e) {
-      Element? z = document.querySelector('#messageblock');
-      if (z != null && z.getAttribute('hidden') == 'false') {
-        sizeMessageBlock();
-      }
-    }.toJS,
-  );
+  // the next block contains the nost recent version of this
+
+  // window.addEventListener(
+  //   'onResize',
+  //   (e) {
+  //     Element? z = document.querySelector('#messageblock');
+  //     if (z != null && z.getAttribute('visible') == 'true') {
+  //       sizeMessageBlock();
+  //     }
+  //   }.toJS,
+  // );
 
   // window.onResize.listen((e) {
   //   Element? z = document.querySelector('#messageblock');
