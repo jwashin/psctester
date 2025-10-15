@@ -1,0 +1,4 @@
+starting version 2.2
+file exists
+got json:
+ {'serial': '10130', 'siteid': '92240', 'c': 'Qfam', 'x3': 'MC3-24', 'channels': [22, 23, 24]}
