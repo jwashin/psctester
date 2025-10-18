@@ -10,12 +10,13 @@ import (
 	"strings"
 	"time"
 
-	rpio "github.com/stianeikeland/go-rpio/v4"
+	"github.com/stianeikeland/go-rpio/v4"
+	"periph.io/x/conn/v3/driver/driverreg"
 )
 
 const (
 	VERSION = "2.05"
-	SNAME   = "hardware_interface.go"
+	SNAME   = "hardware_interface.py"
 
 	// NOTE: Original Python used GPIO.BOARD numbering. go-rpio uses BCM numbering.
 	// Keep the same numbers as in original file but you must adjust them to BCM
@@ -33,17 +34,17 @@ const (
 	// STATUS_LED         = 18
 	// OVER_TEMP          = 31
 
-	// converted to BCM (https://pinout.xyz/)
+	// converted to BCM (using https://pinout.xyz/)
 
-	AMPS_ON_RELAY      = 25
-	AMPS_HIGH_RELAY    = 17
-	AMPS_LOW_RELAY     = 23
-	VOLTS_ON_RELAY     = 22
-	RS485_2WIRE_RELAY  = 16
-	GATE_CONTROL       = 18
-	SUPPRESS_OPTO_GATE = 12
-	STATUS_LED         = 24
-	OVER_TEMP          = 6
+	AMPS_ON_RELAY      = "GPIO25"
+	AMPS_HIGH_RELAY    = "GPIO17"
+	AMPS_LOW_RELAY     = "GPIO23"
+	VOLTS_ON_RELAY     = "GPIO22"
+	RS485_2WIRE_RELAY  = "GPIO16"
+	GATE_CONTROL       = "GPIO18"
+	SUPPRESS_OPTO_GATE = "GPIO12"
+	STATUS_LED         = "GPIO24"
+	OVER_TEMP          = "GPIO6"
 
 	RELAY_DELAY = 100 * time.Millisecond
 )
@@ -62,11 +63,18 @@ func init() {
 
 // GPIOAdapter abstracts GPIO operations so we can fallback to a mock when rpio is unavailable.
 type GPIOAdapter interface {
-	SetupOutput(pin int, initialHigh bool)
-	SetupInputPullUp(pin int)
-	Output(pin int, high bool)
-	Input(pin int) bool
+	SetupOutput(pin string, initialHigh bool)
+	SetupInputPullUp(pin string)
+	Output(pin string, high bool)
+	Input(pin string) bool
 	Close()
+}
+
+func init() {
+	// Make sure periph is initialized.
+	if _, err := driverreg.Init(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 type rpioAdapter struct {
@@ -80,8 +88,9 @@ func newRPIOAdapter() (*rpioAdapter, error) {
 	return &rpioAdapter{open: true}, nil
 }
 
-func (a *rpioAdapter) SetupOutput(pin int, initialHigh bool) {
-	p := rpio.Pin(pin)
+func (a *rpioAdapter) SetupOutput(pin string, initialHigh bool) {
+	// p := rpio.Pin(pin)
+	p := gpioreg.ByName(pin)
 	p.Output()
 	if initialHigh {
 		p.High()
@@ -90,7 +99,7 @@ func (a *rpioAdapter) SetupOutput(pin int, initialHigh bool) {
 	}
 }
 
-func (a *rpioAdapter) SetupInputPullUp(pin int) {
+func (a *rpioAdapter) SetupInputPullUp(pin string) {
 	p := rpio.Pin(pin)
 	p.Input()
 	p.PullUp()
