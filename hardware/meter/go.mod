@@ -2,6 +2,4 @@ module newsome/psctester/hardware/meter
 
 go 1.25.2
 
-require github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
-
-require golang.org/x/sys v0.37.0 // indirect
+require periph.io/x/conn/v3 v3.7.2

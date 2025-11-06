@@ -1,553 +1,560 @@
-// Converted (starter) Go module for meter.py
+// meter.go
 //
-// Notes:
-// - This is a pragmatic, working skeleton that mirrors the Python module structure,
-//   with serial I/O, basic command/response handling and hooks for QFAM support.
-// - Many protocol-specific parsers and ST4/PLC logic are left as TODOs and will
-//   need to be implemented to match the original Python behavior exactly.
-// - Uses github.com/tarm/serial for serial port access. Add it to your module:
-//     go get github.com/tarm/serial
+// Go translation (skeleton) of the provided Python Meter_obj using periph-style interfaces.
+// This is a starting point for a Raspberry Pi 3. Replace the TODO periph implementations
+// with real periph.io initialisation and opening of UART / I2C devices.
 //
-// Save as meter.go in package "meter".
+// Note: This file is intentionally concise and focuses on structure and core behaviors.
+// It uses transport interfaces so you can plug in periph.io-based implementations.
 
-package meter
+package main
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/tarm/serial"
+	"periph.io/x/conn/v3/i2c"
 )
 
-// VERSION history maintained in the Python source; current:
-const VERSION = 2.25
+// -------- Transport interfaces (implement using periph.io) --------
 
-var (
-	// logger similar to Q_logger in Python
-	QLogger = log.Default()
-)
+// SerialPort is a minimal serial interface used by Meter.
+// Implement this using periph.io UART driver.
+// NOTE: add the following import to the file's import block:
+//   "periph.io/x/periph/conn/uart"
+//
+// Adapter that wraps a periph.io UART port and implements the SerialPort
+// interface expected by the rest of the code.
+// Use periph.io serial (conn/serial) instead of uart.
+// Replace the existing import of "periph.io/x/periph/conn/v3/uart" with:
+//   "periph.io/x/periph/conn/v3/serial"
 
-// MeterError represents errors from meter operations
-type MeterError struct {
-	Msg string
+type SerialPort interface {
+	Write([]byte) (int, error)
+	Read([]byte) (int, error)
+	SetBaudrate(int) error
+	FlushInput() error
+	SetReadTimeout(time.Duration)
+	Close() error
 }
 
-func (e *MeterError) Error() string { return e.Msg }
+// Adapter that wraps a periph.io serial port and implements SerialPort.
+// Note: change the import at top to use "periph.io/x/periph/conn/v3/serial"
+// and ensure the PeriphSerialPort below uses serial.PortCloser.
+type PeriphSerialPort struct {
+	port        io.ReadWriteCloser
+	readTimeout time.Duration
+	mu          sync.Mutex
+}
+
+// NewPeriphSerialPort returns a SerialPort backed by a periph UART port.
+// The caller is responsible for opening the periph UART port (host init, etc)
+func NewPeriphSerialPort(p io.ReadWriteCloser) SerialPort {
+	return &PeriphSerialPort{
+		port:        p,
+		readTimeout: 200 * time.Millisecond,
+	}
+}
+
+func (p *PeriphSerialPort) Write(b []byte) (int, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.port.Write(b)
+}
+
+func (p *PeriphSerialPort) Read(b []byte) (int, error) {
+	// Perform a blocking read in a goroutine and enforce read timeout if set.
+	type res struct {
+		n   int
+		err error
+	}
+	ch := make(chan res, 1)
+
+	go func() {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		n, err := p.port.Read(b)
+		ch <- res{n: n, err: err}
+	}()
+
+	if p.readTimeout <= 0 {
+		r := <-ch
+		return r.n, r.err
+	}
+	select {
+	case r := <-ch:
+		return r.n, r.err
+	case <-time.After(p.readTimeout):
+		// Timeout - return zero bytes and a timeout error.
+		return 0, fmt.Errorf("serial read timeout")
+	}
+}
+
+func (p *PeriphSerialPort) SetBaudrate(baud int) error {
+	// Try to call an underlying SetBaudRate method if provided by the port.
+	if s, ok := p.port.(interface{ SetBaudRate(int) error }); ok {
+		return s.SetBaudRate(baud)
+	}
+	// Some periph UART implementations expose SetSpeed with physic.Frequency,
+	// try to detect that as well.
+	if s2, ok := p.port.(interface{ SetSpeed(uint32) error }); ok {
+		return s2.SetSpeed(uint32(baud))
+	}
+	return fmt.Errorf("underlying port does not support changing baud rate")
+}
+
+func (p *PeriphSerialPort) FlushInput() error {
+	// Read until no more data is immediately available (drain input).
+	buf := make([]byte, 256)
+	// Temporarily increase timeout to drain quickly without blocking long.
+	oldTimeout := p.readTimeout
+	p.readTimeout = 50 * time.Millisecond
+	defer func() { p.readTimeout = oldTimeout }()
+
+	for {
+		n, err := p.Read(buf)
+		if err != nil {
+			// treat timeout (no more data) as success
+			if strings.Contains(err.Error(), "timeout") {
+				return nil
+			}
+			// other read errors: continue or return
+			return nil
+		}
+		if n == 0 {
+			return nil
+		}
+		// loop to attempt to drain remaining data
+	}
+}
+
+func (p *PeriphSerialPort) SetReadTimeout(d time.Duration) {
+	p.readTimeout = d
+}
+
+func (p *PeriphSerialPort) Close() error {
+	return p.port.Close()
+}
+
+// type SerialPort interface {
+// 	Write([]byte) (int, error)
+// 	Read([]byte) (int, error)
+// 	SetBaudrate(int) error
+// 	FlushInput() error
+// 	SetReadTimeout(time.Duration)
+// 	Close() error
+// }
+
+// I2CBus is a minimal I2C interface used by PulseTest.
+// Implement this using periph.io I2C driver.
+
+// Add "periph.io/x/periph/conn/i2c" to the file's import block.
+
+type PeriphI2CBus struct {
+	bus i2c.BusCloser
+	mu  sync.Mutex
+}
+
+// NewPeriphI2CBus returns an I2CBus backed by a periph.io i2c.BusCloser.
+// The caller is responsible for initializing the periph host and opening the bus.
+func NewPeriphI2CBus(b i2c.BusCloser) I2CBus {
+	return &PeriphI2CBus{bus: b}
+}
+
+func (p *PeriphI2CBus) Tx(addr uint16, w, r []byte) error {
+	if p.bus == nil {
+		return fmt.Errorf("i2c bus not initialized")
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	// periph.io i2c.BusCloser implements Tx(addr uint16, w, r []byte) error
+	return p.bus.Tx(addr, w, r)
+}
+
+func (p *PeriphI2CBus) Close() error {
+	if p.bus == nil {
+		return nil
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.bus.Close()
+}
+
+type I2CBus interface {
+	Tx(addr uint16, w, r []byte) error
+	Close() error
+}
+
+// -------- PulseTest (QFAM) minimal stub that uses I2C bus --------
 
 type PulseTest struct {
-	// Placeholder for PSC_QFAM_interface.PulseTest
-	MeterInfoAvailable bool
-	MeterSerNo         uint32
-	Version            uint32
-	DateAndTime        string
+	bus    I2CBus
+	addr   uint16
+	meter  *PulseMeterInfo
+	mutex  sync.Mutex
+	logger *log.Logger
 }
 
-// Simulate PulseTest.GetMeterInfo
-func (p *PulseTest) GetMeterInfo() bool {
-	// TODO: implement I2C/Modbus access here.
-	return p.MeterInfoAvailable
+type PulseMeterInfo struct {
+	serno   uint32
+	version uint32
+	date    string
+	time    string
 }
+
+func NewPulseTest(bus I2CBus, addr uint16, logger *log.Logger) *PulseTest {
+	return &PulseTest{bus: bus, addr: addr, logger: logger}
+}
+
+// GetMeterInfo tries to populate PulseTest.meter from I2C.
+// This is highly device-specific; this stub returns false unless you implement.
+func (p *PulseTest) GetMeterInfo() bool {
+	// TODO: Implement real I2C queries per QFAM protocol
+	// Example:
+	// w := []byte{ /* command */ }
+	// r := make([]byte, 16)
+	// if err := p.bus.Tx(p.addr, w, r); err != nil { return false }
+	// parse r into p.meter...
+	return false
+}
+
+// -------- Meter types, errors, helpers --------
+
+var (
+	ErrMeterContact = errors.New("could not contact meter")
+	ErrBadReply     = errors.New("bad reply")
+)
 
 type Meter struct {
-	ttyDev         string
-	MeterType      string
-	MeterSerNo     uint32
-	MeterProtocol  string
-	NumPhases      int
-	MeterVersion   string
-	MeterDate      string
-	MeterTime      string
-	UseCurrentGate bool
-
-	serialPort *serial.Port
-	rwMutex    sync.Mutex
-
-	// internal receive buffer for last command
-	lastResponse string
-	// max buffer length like Python r_buf_maxlen
-	rBufMaxLen int
-	// pulseTest for QFAM
-	pulseTest *PulseTest
+	serial           SerialPort
+	i2c              I2CBus
+	pulseTest        *PulseTest
+	meterType        string // "TMX5", "TMX4", "QFAM", ...
+	meterSerNo       uint32
+	meterProtocol    string
+	meterVersion     string
+	meterDate        string
+	meterTime        string
+	numPhases        int
+	useCurrentGating bool
+	rBuf             []byte
+	rBufMaxLen       int
+	logger           *log.Logger
+	// internal sync
+	readMutex sync.Mutex
 }
 
-func NewMeter(ttydev string, mType string, mSerNo uint32, mProt string, mNumPh int) (*Meter, error) {
+func NewMeter(serial SerialPort, i2c I2CBus, mType string, logger *log.Logger) (*Meter, error) {
 	m := &Meter{
-		ttyDev:        ttydev,
-		MeterType:     mType,
-		MeterSerNo:    mSerNo,
-		MeterProtocol: mProt,
-		NumPhases:     mNumPh,
+		serial:        serial,
+		i2c:           i2c,
+		meterType:     mType,
+		meterProtocol: "unknown",
 		rBufMaxLen:    20000,
+		logger:        logger,
 	}
-
-	QLogger.Printf("open serial port: %s", ttydev)
-
+	// For QFAM, set up PulseTest
 	if mType == "QFAM" {
-		// QFAM uses PulseTest (I2C/modbus). This is a placeholder.
-		m.pulseTest = &PulseTest{}
-		if m.pulseTest.GetMeterInfo() {
-			m.MeterSerNo = m.pulseTest.MeterSerNo
-			parts := strings.Split(m.pulseTest.DateAndTime, " ")
-			if len(parts) >= 2 {
-				m.MeterDate, m.MeterTime = parts[0], parts[1]
-			}
-			m.MeterVersion = fmt.Sprintf("%08x", m.pulseTest.Version)
-			// map first two hex chars -> protocol/phase mapping as Python did
-			if len(m.MeterVersion) >= 2 {
-				switch m.MeterVersion[:2] {
-				case "10":
-					m.MeterProtocol = "QB6"
-					m.NumPhases = 6
-				case "11":
-					m.MeterProtocol = "QB4"
-					m.NumPhases = 4
-				case "12":
-					m.MeterProtocol = "QB1"
-					m.NumPhases = 1
-				default:
-					return nil, &MeterError{Msg: fmt.Sprintf("Invalid meter type in serno: %s", m.MeterVersion)}
-				}
-			}
-		} else {
-			return nil, &MeterError{Msg: "Could not contact QFAM meter"}
+		m.pulseTest = NewPulseTest(i2c, 0x10, logger) // use real I2C addr
+		if !m.pulseTest.GetMeterInfo() {
+			return nil, ErrMeterContact
 		}
-		return m, nil
-	}
-
-	// Legacy family - open serial port
-	baud := 19200
-	switch mType {
-	case "TMX1", "TMX3", "TMX4":
-		baud = 2400
-	case "TMX5", "TMX5n", "MC5n":
-		baud = 19200
-	}
-	c := &serial.Config{
-		Name:        ttydev,
-		Baud:        baud,
-		ReadTimeout: time.Millisecond * 500, // like timeout=0.5
-		Size:        8,
-		Parity:      serial.ParityNone,
-		StopBits:    serial.Stop1,
-	}
-	sp, err := serial.OpenPort(c)
-	if err != nil {
-		return nil, err
-	}
-	m.serialPort = sp
-
-	// call setup_meter (attempt login & version read)
-	if ok, err := m.setupMeter(); !ok || err != nil {
-		return nil, &MeterError{Msg: "Could not contact meter"}
+		// populate fields from pulseTest.meter (example)
+		if m.pulseTest.meter != nil {
+			m.meterSerNo = m.pulseTest.meter.serno
+			m.meterVersion = fmt.Sprintf("%08x", m.pulseTest.meter.version)
+			// split date/time if available
+		}
+	} else {
+		// For legacy meters, serial must be present
+		if serial == nil {
+			return nil, fmt.Errorf("serial required for meter type %s", mType)
+		}
+		// Basic login/setup
+		if err := m.setupMeter(); err != nil {
+			return nil, err
+		}
 	}
 	return m, nil
 }
 
-// set baudrate
-func (m *Meter) SetBaudRate(baud int) error {
-	if m.serialPort == nil {
-		return errors.New("serial port not open")
+// -------- Serial command exchange --------
+
+// sendCmd writes cmdStr to serial and reads until prompt regex or timeout.
+// promptRE is a regular expression string to detect the end of reply.
+func (m *Meter) sendCmd(cmdStr string, promptRE string, cmdTimeout time.Duration, comRetries int, noReply bool) (bool, error) {
+	if comRetries <= 0 {
+		comRetries = 1
 	}
-	// tarm/serial doesn't allow changing baud directly; reopen port.
-	// For brevity, we'll close and reopen. In production, keep config and reopen carefully.
-	m.rwMutex.Lock()
-	defer m.rwMutex.Unlock()
-	name := m.ttyDev
-	_ = m.serialPort.Close()
-	c := &serial.Config{Name: name, Baud: baud, ReadTimeout: time.Millisecond * 500}
-	sp, err := serial.OpenPort(c)
+	if promptRE == "" {
+		promptRE = `(CIP[\:>#\$\\]\r?$)|(S[\:>#\$\\]\r?$)`
+	}
+	promptRe := regexp.MustCompile(promptRE)
+
+	for tries := 0; tries < comRetries; tries++ {
+		if err := m.serial.FlushInput(); err != nil {
+			m.logger.Printf("flush input error: %v", err)
+		}
+		m.rBuf = m.rBuf[:0]
+
+		_, err := m.serial.Write([]byte(cmdStr))
+		if err != nil {
+			m.logger.Printf("serial write error: %v", err)
+			continue
+		}
+		m.logger.Printf("sent: %s", cmdStr)
+
+		if noReply {
+			return true, nil
+		}
+
+		// read until timeout or match
+		deadline := time.Now().Add(cmdTimeout)
+		buf := make([]byte, 256)
+		for {
+			// adjust per-read timeout by setting serial read timeout via serial.SetReadTimeout before reading
+			m.serial.SetReadTimeout(time.Millisecond * 200)
+			n, err := m.serial.Read(buf)
+			if err != nil {
+				// non-fatal, retry loop
+				// small sleep to avoid busy loop
+				time.Sleep(50 * time.Millisecond)
+			} else if n > 0 {
+				m.rBuf = append(m.rBuf, buf[:n]...)
+				if len(m.rBuf) > m.rBufMaxLen {
+					return false, ErrBadReply
+				}
+				text := safeString(m.rBuf)
+				m.logger.Printf("recv: %s", text)
+				if promptRe.MatchString(text) {
+					// success if no "error" in text
+					if !regexp.MustCompile(`[Ee]rror`).MatchString(text) {
+						return true, nil
+					}
+					return false, fmt.Errorf("remote error: %s", text)
+				}
+			}
+			if time.Now().After(deadline) {
+				break
+			}
+		}
+		// retry
+	}
+	return false, ErrMeterContact
+}
+
+func safeString(b []byte) string {
+	// replace invalid utf-8 with replacement char
+	return string(b)
+}
+
+// -------- Setup and login --------
+
+func (m *Meter) setupMeter() error {
+	// Attempt login and version reading similar to Python setup_meter
+	ok, err := m.login()
 	if err != nil {
 		return err
 	}
-	m.serialPort = sp
-	QLogger.Printf("set baud rate: %d", baud)
+	if !ok {
+		return ErrMeterContact
+	}
+
+	// try to read version for some meter types
+	if m.meterType == "TMX5" || m.meterType == "TMX5n" {
+		// simple attempt to run "ver" and parse hex version
+		if ok, _ := m.sendCmd("ver\r", `([0-9a-fA-F]{8})`, 2*time.Second, 2, false); ok {
+			// extract first hex token
+			re := regexp.MustCompile(`([0-9a-fA-F]{8})`)
+			match := re.FindStringSubmatch(safeString(m.rBuf))
+			if len(match) > 1 {
+				m.meterVersion = match[1]
+				// set protocol heuristics
+				switch m.meterVersion[0] {
+				case '2':
+					m.meterProtocol = "TMX5B"
+				case '3':
+					m.meterProtocol = "TMX5C"
+				case '5', '6':
+					m.meterProtocol = "TMX5n"
+				default:
+					m.meterProtocol = "unknown"
+				}
+			}
+		}
+	}
+
+	// set reasonable defaults if still unknown
+	if m.meterProtocol == "" {
+		m.meterProtocol = "unknown"
+	}
 	return nil
 }
 
-// sendCmd: send command and wait for prompt or timeout.
-// promptRe optional regex; if empty uses default prompt similar to Python.
-func (m *Meter) SendCmd(cmd string, cmdFlags byte, cmdTimeout time.Duration, comRetries int, promptRe string) (bool, error) {
-	// cmdFlags: 'n' means no reply expected
-	if m.serialPort == nil {
-		return false, errors.New("serial port not open")
-	}
-	if promptRe == "" {
-		// default prompt regex roughly equivalent to Python prompt_re
-		promptRe = `(CIP[\:>#\$\\]\r?$)|(S[\:>#\$\\]\r?$)`
-	}
-	promptRE, err := regexp.Compile(promptRe)
-	if err != nil {
-		return false, err
-	}
-
-	data := []byte(cmd)
-	for comRetries > 0 {
-		comRetries--
-		m.rwMutex.Lock()
-		// flush by simple drain (best-effort)
-		_ = m.serialPort.Flush()
-		// write
-		_, werr := m.serialPort.Write(data)
-		m.rwMutex.Unlock()
-		if werr != nil {
-			return false, werr
-		}
-		QLogger.Printf("send: %s", cmd)
-
-		if cmdFlags == 'n' {
-			return true, nil
-		}
-
-		// read loop until prompt or timeout
-		var sb strings.Builder
-		deadline := time.Now().Add(cmdTimeout)
-		buf := make([]byte, 1024)
-		for time.Now().Before(deadline) && sb.Len() < m.rBufMaxLen {
-			m.rwMutex.Lock()
-			n, rerr := m.serialPort.Read(buf)
-			m.rwMutex.Unlock()
-			if rerr != nil && n == 0 {
-				// read timeout - wait a bit and continue
-				time.Sleep(50 * time.Millisecond)
-				continue
-			}
-			if n > 0 {
-				chunk := string(buf[:n])
-				// ensure valid UTF-8 -- Go strings are UTF-8. We assume device sends ASCII/UTF-8.
-				sb.WriteString(chunk)
-				if promptRE.MatchString(sb.String()) {
-					m.lastResponse = sb.String()
-					QLogger.Printf("receive: true\n%s", m.lastResponse)
-					// basic error check
-					if strings.Contains(strings.ToLower(m.lastResponse), "error") {
-						return false, nil
-					}
-					// TODO: data_validator hook support
-					return true, nil
-				}
-				// check for modem failure text
-				if strings.Contains(sb.String(), "modem failure") {
-					// emulate Python behavior: sleep then increase retries
-					time.Sleep(25 * time.Second)
-					comRetries += 5
-				}
-			} else {
-				time.Sleep(50 * time.Millisecond)
-			}
-		}
-		// timed out; try again if retries remain
-		QLogger.Printf("receive: false\n%s", sb.String())
-		m.lastResponse = sb.String()
-	}
-
-	return false, nil
-}
-
-func (m *Meter) setupMeter() (bool, error) {
-	// For brevity, implement a simplified version:
-	// call login (which will attempt attn -d or serial login variants),
-	// then try to read version for some meter types.
-	ok, err := m.login()
-	if err != nil || !ok {
-		return false, err
-	}
-	// Additional type-specific setup
-	switch m.MeterType {
-	case "TMX5n":
-		// read version (simple)
-		_, _ = m.SendCmd("ver\r", 'r', 3*time.Second, 2, "")
-		// Parse version from lastResponse
-		ver := extractHex32(m.lastResponse)
-		if ver != "" {
-			m.MeterVersion = ver
-			// set protocol & phases based on leading chars - simplified
-			if strings.HasPrefix(ver, "5") {
-				m.MeterProtocol = "TMX5n"
-				m.UseCurrentGate = true
-				// phases detection omitted
-			}
-		}
-	case "TMX5":
-		_, _ = m.SendCmd("ver\r", 'r', 3*time.Second, 2, "")
-		m.MeterVersion = extractHex32(m.lastResponse)
-		// simplified protocol decide
-		if m.MeterVersion != "" {
-			switch m.MeterVersion[0] {
-			case '2':
-				m.MeterProtocol = "TMX5B"
-			case '3':
-				m.MeterProtocol = "TMX5C"
-			default:
-				// fallback
-				m.MeterProtocol = "TMX5"
-			}
-		}
-	case "TMX4":
-		ok, _ := m.SendCmd("ver\r", 'r', 3*time.Second, 2, "")
-		if ok {
-			lines := strings.Split(m.lastResponse, "\r\n")
-			if len(lines) > 1 && len(lines[1]) >= 18 {
-				m.MeterVersion = strings.TrimSpace(lines[1][10:18])
-			}
-		}
-		// query md -Gp to find phases
-		if ok, _ := m.SendCmd("md -Gp\r", 'r', 3*time.Second, 2, ""); ok {
-			lines := strings.Split(m.lastResponse, "\r\n")
-			phases := 0
-			for _, ln := range lines {
-				if regexp.MustCompile(`(\s{1,2}\d{1,2}){2}`).MatchString(ln) {
-					phases++
-				}
-			}
-			if phases > 0 {
-				m.NumPhases = phases
-				if phases < 4 {
-					m.MeterProtocol = "TMX4"
-				} else {
-					m.MeterProtocol = "TMX4M"
-				}
-				m.UseCurrentGate = true
-				return true, nil
-			}
-		}
-	case "TMX3", "TMX1":
-		m.UseCurrentGate = true
-		m.MeterProtocol = m.MeterType
-		return true, nil
-	}
-	// default OK if login succeeded
-	return true, nil
-}
-
-func extractHex32(s string) string {
-	re := regexp.MustCompile(`([0-9a-fA-F]{8})`)
-	m := re.FindStringSubmatch(s)
-	if len(m) >= 2 {
-		return strings.ToLower(m[1])
-	}
-	return ""
-}
-
 func (m *Meter) login() (bool, error) {
-	// Simplified login flow:
-	// attempt an 'attn -d' first for TMX4/TMX5
-	if m.MeterType == "TMX4" || m.MeterType == "TMX5" {
-		ok, _ := m.SendCmd("attn -d\r", 'r', 2*time.Second, 1, "")
-		if ok {
-			return true, nil
-		}
-	}
-	// Fallback simulated login - real implementation needs protocol-specific sequences
-	switch m.MeterType {
-	case "TMX5":
-		// try attn -D then attn -S... sequences as in Python
-		ok, _ := m.SendCmd("attn -D\r", 'r', 2*time.Second, 4, `(\d{8})( {1,4}[0-9A-Fa-f]{1,4}){1,2}\r?`)
-		if ok {
-			// parse serial number
-			re := regexp.MustCompile(`(\d{8})`)
-			if match := re.FindStringSubmatch(m.lastResponse); len(match) >= 2 {
-				// parse decimal serial as in Python eval
-				fmt.Sscanf(match[1], "%d", &m.MeterSerNo)
-			}
-			// then try attn -S... (simplified)
-			_, _ = m.SendCmd(fmt.Sprintf("attn -S%d -5lEvElbAl\r", m.MeterSerNo), 'r', 2*time.Second, 1, `\d{1,2}\:\d\d\:\d\d`)
-			return true, nil
-		}
-		// try baud switching fallback omitted
-		return false, nil
-	case "TMX4":
-		// simplified TMX4 login: try attn -S... at 2400, then change baud
-		_ = m.SetBaudRate(2400)
-		ok, _ := m.SendCmd(fmt.Sprintf("attn -S%d -4u5574\r", m.MeterSerNo), 'r', 2*time.Second, 1, `\d{1,2}\:\d\d\:\d\d`)
-		if ok {
-			// option to raise baud
-			_, _ = m.SendCmd("baudhigh\r", 'r', 2*time.Second, 1, "")
-			_ = m.SetBaudRate(9600)
-			return true, nil
-		}
-		_ = m.SetBaudRate(9600)
+	// Simplified: try "attn -d\r" and accept success when prompt found.
+	ok, err := m.sendCmd("attn -d\r", `(CIP[\:>#\$\\]\r?$)|(S[\:>#\$\\]\r?$)`, 2*time.Second, 2, false)
+	if ok {
 		return true, nil
-	case "TMX1", "TMX3":
-		// TMX1/TMX3 require PLC ST4 setup in Python; we return true as placeholder
-		return true, nil
-	default:
-		return false, nil
 	}
+	// Fallbacks per meter type could be implemented here
+	return false, err
 }
 
-// GetKWH - simplified: dispatch to protocol-specific stub functions
+// -------- KWH read logic (simplified) --------
+
 func (m *Meter) GetKWH() ([]float64, error) {
-	switch m.MeterProtocol {
+	// Dispatch based on m.meterProtocol (simplified)
+	switch m.meterProtocol {
 	case "TMX5B", "TMX5C":
-		return m.getKwhTMX5B()
-	case "TMX5D":
-		return m.getKwhTMX5D()
+		return m.getKWH_TMX5B()
 	case "TMX4", "TMX4M":
-		return m.getKwhTMX4()
-	case "TMX3", "TMX1":
-		return m.getKwhTMX3_TM1()
+		return m.getKWH_TMX4()
 	case "TMX5n":
-		return m.getKwhTMX5n()
-	case "MC5n":
-		return m.getKwhMC5n()
+		return m.getKWH_TMX5n()
 	default:
-		return nil, &MeterError{Msg: "unsupported meter protocol for GetKWH"}
+		// Try TMX5B style as default
+		return m.getKWH_TMX5B()
 	}
 }
 
-func (m *Meter) getKwhTMX5B() ([]float64, error) {
-	// Example: send md -Gt -Q2 and parse. Full parser omitted.
-	ok, _ := m.SendCmd("md -Gt -Q2\r", 'r', 3*time.Second, 2, "")
-	if !ok {
-		return nil, &MeterError{Msg: "bad reply reading KWH"}
+func (m *Meter) getKWH_TMX5B() ([]float64, error) {
+	if m.numPhases <= 0 {
+		m.numPhases = 3 // default guess
 	}
-	// Very simple parsing: extract all floats from response and return first NumPhases
-	re := regexp.MustCompile(`-?\d+(\.\d+)?`)
-	all := re.FindAllString(m.lastResponse, -1)
-	out := make([]float64, 0, m.NumPhases)
-	for i := 0; i < len(all) && len(out) < m.NumPhases; i++ {
-		var v float64
-		fmt.Sscanf(all[i], "%f", &v)
-		out = append(out, v)
+	if ok, err := m.sendCmd("md -Gt -Q2\r", `Mtr PH`, 3*time.Second, 3, false); !ok {
+		return nil, err
 	}
-	if len(out) != m.NumPhases {
-		return nil, &MeterError{Msg: "bad reply reading KWH (count mismatch)"}
+	reply := safeString(m.rBuf)
+	lines := splitLines(reply)
+	if len(lines) < 3 {
+		return nil, ErrBadReply
 	}
-	return out, nil
-}
-
-func (m *Meter) getKwhTMX5D() ([]float64, error) {
-	// placeholder similar to TMX5B
-	return m.getKwhTMX5B()
-}
-
-func (m *Meter) getKwhTMX4() ([]float64, error) {
-	ok, _ := m.SendCmd("md -Gt -Q2\r", 'r', 3*time.Second, 3, "")
-	if !ok {
-		return nil, &MeterError{Msg: "bad reply reading KWH"}
-	}
-	re := regexp.MustCompile(`-?\d+(\.\d+)?`)
-	all := re.FindAllString(m.lastResponse, -1)
-	out := make([]float64, 0, m.NumPhases)
-	for i := 0; i < len(all) && len(out) < m.NumPhases; i++ {
-		var v float64
-		fmt.Sscanf(all[i], "%f", &v)
-		out = append(out, v)
-	}
-	if len(out) != m.NumPhases {
-		return nil, &MeterError{Msg: "bad reply reading KWH (count mismatch)"}
-	}
-	return out, nil
-}
-
-func (m *Meter) getKwhTMX3_TM1() ([]float64, error) {
-	// TMX1/TMX3 via PLC/ST4 is complex; not implemented.
-	return nil, &MeterError{Msg: "GetKWH via ST4/PLC not implemented in Go skeleton"}
-}
-
-func (m *Meter) getKwhTMX5n() ([]float64, error) {
-	// Simplified implementation: TODO parse properly
-	ok, _ := m.SendCmd("md -t\r", 'r', 3*time.Second, 2, "")
-	if !ok {
-		return nil, &MeterError{Msg: "bad reply reading KWH for TMX5n"}
-	}
-	re := regexp.MustCompile(`-?\d+(\.\d+)?`)
-	all := re.FindAllString(m.lastResponse, -1)
-	out := make([]float64, 0, m.NumPhases)
-	for i := 0; i < len(all) && len(out) < m.NumPhases; i++ {
-		var v float64
-		fmt.Sscanf(all[i], "%f", &v)
-		out = append(out, v)
-	}
-	if len(out) != m.NumPhases {
-		return nil, &MeterError{Msg: "bad reply reading KWH (count mismatch)"}
-	}
-	return out, nil
-}
-
-func (m *Meter) getKwhMC5n() ([]float64, error) {
-	// placeholder by calling mscan -Gt and parsing child lines (omitted)
-	ok, _ := m.SendCmd("mscan -Gt\r", 'r', 3*time.Second, 3, "")
-	if !ok {
-		return nil, &MeterError{Msg: "bad reply reading KWH for MC5n"}
-	}
-	// find long hex/number fields; naive parse: collect floats
-	re := regexp.MustCompile(`-?\d+(\.\d+)?`)
-	all := re.FindAllString(m.lastResponse, -1)
-	out := make([]float64, 0, m.NumPhases)
-	for i := 0; i < len(all) && len(out) < m.NumPhases; i++ {
-		var v float64
-		fmt.Sscanf(all[i], "%f", &v)
-		out = append(out, v)
-	}
-	if len(out) != m.NumPhases {
-		return nil, &MeterError{Msg: "bad reply reading KWH (count mismatch)"}
-	}
-	return out, nil
-}
-
-// getPhaseData returns per-phase [Amps,Volts,Watts,VARs] lists. Some protocols not implemented.
-func (m *Meter) GetPhaseData() ([][]float64, error) {
-	switch m.MeterProtocol {
-	case "TMX4", "TMX4M":
-		return m.getPhaseDataTMX4()
-	case "TMX3M":
-		return m.getPhaseDataTMX3M()
-	default:
-		return nil, &MeterError{Msg: "GetPhaseData not implemented for this protocol"}
-	}
-}
-
-func (m *Meter) getPhaseDataTMX4() ([][]float64, error) {
-	ok, _ := m.SendCmd("md -Gp\r", 'r', 3*time.Second, 2, "")
-	if !ok {
-		return nil, &MeterError{Msg: "bad reply reading phase"}
-	}
-	lines := strings.Split(m.lastResponse, "\r\n")
-	if len(lines) < 2 || !strings.HasPrefix(lines[1], "Mtr PH") {
-		return nil, &MeterError{Msg: "bad reply reading phase"}
-	}
-	out := [][]float64{}
-	re := regexp.MustCompile(`([\-0-9\.]+)([ muk])A.*?([\-0-9\.]+)([ muk])V.*?([\-0-9\.]+)([ muk])W.*?([\-0-9\.]+)([ muk])VAR`)
-	for _, ln := range lines[2:] {
-		if ln == "" {
-			continue
+	var result []float64
+	re := regexp.MustCompile(`( {1,8}\-?[\d\.]{1,17})`)
+	for _, line := range lines[2 : 2+m.numPhases] {
+		matches := re.FindAllString(line, -1)
+		if len(matches) < 3 {
+			return nil, ErrBadReply
 		}
-		matches := re.FindStringSubmatch(ln)
-		if len(matches) != 9 {
-			return nil, &MeterError{Msg: "Bad data line in phase readings"}
+		// sum three columns (as in python code)
+		var sum float64
+		for i := 0; i < 3; i++ {
+			v, err := strconv.ParseFloat(strings.TrimSpace(matches[i]), 64)
+			if err != nil {
+				return nil, err
+			}
+			sum += v
+		}
+		result = append(result, sum)
+	}
+	return result, nil
+}
+
+func (m *Meter) getKWH_TMX4() ([]float64, error) {
+	// Similar to TMX5B but single-column extract
+	if ok, err := m.sendCmd("md -Gt -Q2\r", `Mtr PH`, 3*time.Second, 3, false); !ok {
+		return nil, err
+	}
+	reply := safeString(m.rBuf)
+	lines := splitLines(reply)
+	var result []float64
+	re := regexp.MustCompile(`( {1,8}\-?[\d\.]{1,13})`)
+	for _, line := range lines[2 : 2+m.numPhases] {
+		matches := re.FindAllString(line, -1)
+		if len(matches) < 1 {
+			return nil, ErrBadReply
+		}
+		v, err := strconv.ParseFloat(strings.TrimSpace(matches[0]), 64)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, v)
+	}
+	return result, nil
+}
+
+func (m *Meter) getKWH_TMX5n() ([]float64, error) {
+	// tmux5n multi-line formatting: try md -t
+	if ok, err := m.sendCmd("md -t\r", `p# {7,12}kWH`, 3*time.Second, 3, false); !ok {
+		return nil, err
+	}
+	reply := safeString(m.rBuf)
+	lines := splitLines(reply)
+	if len(lines) < 3 {
+		return nil, ErrBadReply
+	}
+	var result []float64
+	re := regexp.MustCompile(`(\-?[\d\.]{1,16})`)
+	for i := 2; i < len(lines)-2; i += m.numPhases + 2 {
+		line := lines[i]
+		match := re.FindString(line)
+		if match == "" {
+			return nil, ErrBadReply
+		}
+		v, err := strconv.ParseFloat(match, 64)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, v)
+	}
+	return result, nil
+}
+
+// -------- Phase diagnostics --------
+
+func (m *Meter) GetPhaseData() ([][]float64, error) {
+	switch m.meterProtocol {
+	case "TMX4", "TMX4M":
+		return m.getPhaseData_TMX4()
+	case "TMX3M":
+		return m.getPhaseData_TMX3M()
+	default:
+		return nil, fmt.Errorf("phase diagnostics not supported for protocol %s", m.meterProtocol)
+	}
+}
+
+func (m *Meter) getPhaseData_TMX4() ([][]float64, error) {
+	if ok, err := m.sendCmd("md -Gp\r", `Mtr PH`, 3*time.Second, 3, false); !ok {
+		return nil, err
+	}
+	reply := safeString(m.rBuf)
+	lines := splitLines(reply)
+	if len(lines) < 3 {
+		return nil, ErrBadReply
+	}
+	re := regexp.MustCompile(`( {0,8}\-?[\d\.]{1,13})([ muk])A( {0,8}\-?[\d\.]{1,13})([ muk])V( {0,8}\-?[\d\.]{1,13})([ muk])W( {0,8}\-?[\d\.]{1,13})([ muk])VAR`)
+	var out [][]float64
+	for _, line := range lines[2 : 2+m.numPhases] {
+		match := re.FindStringSubmatch(line)
+		if len(match) != 9 {
+			return nil, ErrBadReply
 		}
 		vals := make([]float64, 4)
 		for i := 0; i < 4; i++ {
-			var v float64
-			fmt.Sscanf(matches[2*i+1], "%f", &v)
-			unit := matches[2*i+2]
-			mult := 1.0
-			switch unit {
-			case "m":
-				mult = 0.001
-			case "u":
-				mult = 0.000001
-			case "k":
-				mult = 1000.0
-			default:
-				mult = 1.0
+			raw := strings.TrimSpace(match[1+2*i])
+			unit := match[2+2*i]
+			v, err := strconv.ParseFloat(raw, 64)
+			if err != nil {
+				return nil, err
 			}
-			vals[i] = v * mult
+			scale := unitScale(unit)
+			vals[i] = v * scale
 		}
 		out = append(out, vals)
 	}
 	return out, nil
 }
 
-func (m *Meter) getPhaseDataTMX3M() ([][]float64, error) {
-	// Algorithm in Python: read KWH, wait 30s, read again, convert to amps/watts
+func (m *Meter) getPhaseData_TMX3M() ([][]float64, error) {
+	// Emulate the Python behaviour: estimate amps by reading KWH twice, 30s apart.
 	start, err := m.GetKWH()
 	if err != nil {
 		return nil, err
@@ -558,7 +565,7 @@ func (m *Meter) getPhaseDataTMX3M() ([][]float64, error) {
 		return nil, err
 	}
 	if len(start) != len(end) {
-		return nil, &MeterError{Msg: "inconsistent KWH lengths"}
+		return nil, fmt.Errorf("kwh length mismatch")
 	}
 	out := make([][]float64, len(start))
 	for i := range start {
@@ -569,20 +576,64 @@ func (m *Meter) getPhaseDataTMX3M() ([][]float64, error) {
 	return out, nil
 }
 
-// Utility: hex dump of lastResponse (debug helper)
-func (m *Meter) LastResponseHex() string {
-	return hex.Dump([]byte(m.lastResponse))
+// -------- Utilities --------
+
+func splitLines(s string) []string {
+	return strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
 }
 
-// Close the underlying serial port
-func (m *Meter) Close() error {
-	if m.serialPort != nil {
-		return m.serialPort.Close()
+func unitScale(u string) float64 {
+	switch u {
+	case " ":
+		return 1.0
+	case "m":
+		return 0.001
+	case "u":
+		return 0.000001
+	case "k":
+		return 1000.0
+	default:
+		return 1.0
 	}
-	return nil
 }
 
-// Example CLI-like main testing function (not included in package use).
-// To use: create a separate main package and call NewMeter() and methods.
-//
-// End of file
+// -------- Example main skeleton (replace serial/i2c TODOs with periph implementations) --------
+
+func main() {
+	logger := log.Default()
+	logger.Println("Meter Go skeleton starting")
+
+	// TODO: Initialise periph host and create periph-based implementations of SerialPort and I2CBus.
+	// Example (pseudo):
+	// host.Init()
+	// uart := periphOpenUART("/dev/ttyAMA0", 19200)
+	// i2c := periphOpenI2C(1)
+	// Use uart and i2c to create Meter.
+
+	var serial SerialPort = nil // TODO: replace with real periph-based SerialPort
+	var i2c I2CBus = nil        // TODO: replace with real periph-based I2CBus
+
+	// For demonstration, fail fast if not implemented:
+	if serial == nil {
+		logger.Fatal("serial transport is not implemented. Implement SerialPort using periph.io and set here.")
+	}
+
+	meter, err := NewMeter(serial, i2c, "TMX5", logger)
+	if err != nil {
+		logger.Fatalf("NewMeter failed: %v", err)
+	}
+
+	kwh, err := meter.GetKWH()
+	if err != nil {
+		logger.Printf("GetKWH error: %v", err)
+	} else {
+		logger.Printf("KWH: %+v", kwh)
+	}
+
+	phase, err := meter.GetPhaseData()
+	if err != nil {
+		logger.Printf("GetPhaseData error: %v", err)
+	} else {
+		logger.Printf("Phase: %+v", phase)
+	}
+}

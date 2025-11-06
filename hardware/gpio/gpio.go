@@ -1,5 +1,6 @@
 // Converted from /home/jwashin/psctester/psctester/from_mike_20251014/cgi-bin/hardware_interface.py
 // VERSION = 2.05      # Add support for QFAM
+// Rewritten to use periph.io instead of go-rpio
 package gpio
 
 import (
@@ -10,31 +11,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/stianeikeland/go-rpio/v4"
-	"periph.io/x/conn/v3/driver/driverreg"
+	"periph.io/x/conn/v3/gpio"
+	"periph.io/x/conn/v3/gpio/gpioreg"
+	"periph.io/x/host/v3"
 )
 
 const (
 	VERSION = "2.05"
 	SNAME   = "hardware_interface.py"
 
-	// NOTE: Original Python used GPIO.BOARD numbering. go-rpio uses BCM numbering.
-	// Keep the same numbers as in original file but you must adjust them to BCM
-	// if you want to use real hardware.
-
-	// Original physical pin numbers
-
-	// AMPS_ON_RELAY      = 22
-	// AMPS_HIGH_RELAY    = 11
-	// AMPS_LOW_RELAY     = 16
-	// VOLTS_ON_RELAY     = 15
-	// RS485_2WIRE_RELAY  = 36
-	// GATE_CONTROL       = 12
-	// SUPPRESS_OPTO_GATE = 32
-	// STATUS_LED         = 18
-	// OVER_TEMP          = 31
-
-	// converted to BCM (using https://pinout.xyz/)
+	// NOTE: Original Python used GPIO.BOARD numbering. periph/gpioreg uses
+	// Linux / BCM style names like "GPIO25" when running on a Raspberry Pi.
+	// Keep the same names as in original file but you must adjust them to the
+	// names your system exposes if different.
 
 	AMPS_ON_RELAY      = "GPIO25"
 	AMPS_HIGH_RELAY    = "GPIO17"
@@ -61,7 +50,7 @@ func init() {
 	}
 }
 
-// GPIOAdapter abstracts GPIO operations so we can fallback to a mock when rpio is unavailable.
+// GPIOAdapter abstracts GPIO operations so we can fallback to a mock when periph is unavailable.
 type GPIOAdapter interface {
 	SetupOutput(pin string, initialHigh bool)
 	SetupInputPullUp(pin string)
@@ -70,89 +59,120 @@ type GPIOAdapter interface {
 	Close()
 }
 
-func init() {
-	// Make sure periph is initialized.
-	if _, err := driverreg.Init(); err != nil {
-		log.Fatal(err)
-	}
+// periphAdapter implements GPIOAdapter using periph.io
+type periphAdapter struct {
+	// pins caches opened pins by name
+	pins map[string]gpio.PinIO
+	// initialized indicates host.Init() succeeded
+	initialized bool
 }
 
-type rpioAdapter struct {
-	open bool
-}
-
-func newRPIOAdapter() (*rpioAdapter, error) {
-	if err := rpio.Open(); err != nil {
+func newPeriphAdapter() (*periphAdapter, error) {
+	if _, err := host.Init(); err != nil {
 		return nil, err
 	}
-	return &rpioAdapter{open: true}, nil
+	return &periphAdapter{
+		pins:        make(map[string]gpio.PinIO),
+		initialized: true,
+	}, nil
 }
 
-func (a *rpioAdapter) SetupOutput(pin string, initialHigh bool) {
-	// p := rpio.Pin(pin)
-	p := gpioreg.ByName(pin)
-	p.Output()
+func (a *periphAdapter) getPin(name string) gpio.PinIO {
+	if p, ok := a.pins[name]; ok {
+		return p
+	}
+	p := gpioreg.ByName(name)
+	if p == nil {
+		QLogger.Printf("periph: pin not found: %s", name)
+		return nil
+	}
+	a.pins[name] = p
+	return p
+}
+
+func (a *periphAdapter) SetupOutput(pin string, initialHigh bool) {
+	p := a.getPin(pin)
+	if p == nil {
+		return
+	}
 	if initialHigh {
-		p.High()
+		if err := p.Out(gpio.High); err != nil {
+			QLogger.Printf("periph: failed to set %s high: %v", pin, err)
+		}
 	} else {
-		p.Low()
+		if err := p.Out(gpio.Low); err != nil {
+			QLogger.Printf("periph: failed to set %s low: %v", pin, err)
+		}
 	}
 }
 
-func (a *rpioAdapter) SetupInputPullUp(pin string) {
-	p := rpio.Pin(pin)
-	p.Input()
-	p.PullUp()
+func (a *periphAdapter) SetupInputPullUp(pin string) {
+	p := a.getPin(pin)
+	if p == nil {
+		return
+	}
+	if err := p.In(gpio.PullUp, gpio.NoEdge); err != nil {
+		QLogger.Printf("periph: failed to configure %s as input pull-up: %v", pin, err)
+	}
 }
 
-func (a *rpioAdapter) Output(pin int, high bool) {
-	p := rpio.Pin(pin)
+func (a *periphAdapter) Output(pin string, high bool) {
+	p := a.getPin(pin)
+	if p == nil {
+		return
+	}
 	if high {
-		p.High()
+		if err := p.Out(gpio.High); err != nil {
+			QLogger.Printf("periph: Output(%s, high) error: %v", pin, err)
+		}
 	} else {
-		p.Low()
+		if err := p.Out(gpio.Low); err != nil {
+			QLogger.Printf("periph: Output(%s, low) error: %v", pin, err)
+		}
 	}
 }
 
-func (a *rpioAdapter) Input(pin int) bool {
-	p := rpio.Pin(pin)
-	return p.Read() == rpio.High
+func (a *periphAdapter) Input(pin string) bool {
+	p := a.getPin(pin)
+	if p == nil {
+		return false
+	}
+	return p.Read() == gpio.High
 }
 
-func (a *rpioAdapter) Close() {
-	if a.open {
-		rpio.Close()
-		a.open = false
-	}
+func (a *periphAdapter) Close() {
+	// periph pins don't need explicit close. Clear cache.
+	a.pins = nil
+	a.initialized = false
 }
 
 // mockAdapter logs actions instead of touching hardware
 type mockAdapter struct {
-	state map[int]bool
+	state map[string]bool
 }
 
 func newMockAdapter() *mockAdapter {
-	return &mockAdapter{state: make(map[int]bool)}
+	return &mockAdapter{state: make(map[string]bool)}
 }
 
-func (m *mockAdapter) SetupOutput(pin int, initialHigh bool) {
-	QLogger.Printf("MOCK: SetupOutput pin %d initial %v", pin, initialHigh)
+func (m *mockAdapter) SetupOutput(pin string, initialHigh bool) {
+	QLogger.Printf("MOCK: SetupOutput pin %s initial %v", pin, initialHigh)
 	m.state[pin] = initialHigh
 }
 
-func (m *mockAdapter) SetupInputPullUp(pin int) {
-	QLogger.Printf("MOCK: SetupInputPullUp pin %d", pin)
+func (m *mockAdapter) SetupInputPullUp(pin string) {
+	QLogger.Printf("MOCK: SetupInputPullUp pin %s", pin)
 	m.state[pin] = true // pulled up
 }
 
-func (m *mockAdapter) Output(pin int, high bool) {
-	QLogger.Printf("MOCK: Output pin %d -> %v", pin, high)
+func (m *mockAdapter) Output(pin string, high bool) {
+	QLogger.Printf("MOCK: Output pin %s -> %v", pin, high)
 	m.state[pin] = high
 }
 
-func (m *mockAdapter) Input(pin int) bool {
+func (m *mockAdapter) Input(pin string) bool {
 	v := m.state[pin]
-	QLogger.Printf("MOCK: Input pin %d -> %v", pin, v)
+	QLogger.Printf("MOCK: Input pin %s -> %v", pin, v)
 	return v
 }
 
@@ -167,31 +187,31 @@ type TesterHardware struct {
 }
 
 func NewTesterHardware(testType string) *TesterHardware {
-	var gpio GPIOAdapter
-	r, err := newRPIOAdapter()
+	var gpioDev GPIOAdapter
+	per, err := newPeriphAdapter()
 	if err != nil {
-		QLogger.Printf("failed to open rpio (%v), using mock adapter", err)
-		gpio = newMockAdapter()
+		QLogger.Printf("failed to initialize periph (%v), using mock adapter", err)
+		gpioDev = newMockAdapter()
 	} else {
-		gpio = r
+		gpioDev = per
 	}
 
 	// initialize pins as in original Python
-	gpio.SetupOutput(AMPS_ON_RELAY, true)
-	gpio.SetupOutput(AMPS_HIGH_RELAY, true)
-	gpio.SetupOutput(AMPS_LOW_RELAY, true)
-	gpio.SetupOutput(VOLTS_ON_RELAY, true)
-	gpio.SetupOutput(GATE_CONTROL, true)
-	gpio.SetupOutput(SUPPRESS_OPTO_GATE, true)
-	gpio.SetupInputPullUp(OVER_TEMP)
+	gpioDev.SetupOutput(AMPS_ON_RELAY, true)
+	gpioDev.SetupOutput(AMPS_HIGH_RELAY, true)
+	gpioDev.SetupOutput(AMPS_LOW_RELAY, true)
+	gpioDev.SetupOutput(VOLTS_ON_RELAY, true)
+	gpioDev.SetupOutput(GATE_CONTROL, true)
+	gpioDev.SetupOutput(SUPPRESS_OPTO_GATE, true)
+	gpioDev.SetupInputPullUp(OVER_TEMP)
 	initialRS485 := false
 	if testType == "QFAM" {
 		initialRS485 = true
 	}
-	gpio.SetupOutput(RS485_2WIRE_RELAY, initialRS485)
+	gpioDev.SetupOutput(RS485_2WIRE_RELAY, initialRS485)
 
 	return &TesterHardware{
-		gpio:     gpio,
+		gpio:     gpioDev,
 		testType: testType,
 	}
 }
