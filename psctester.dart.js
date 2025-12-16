@@ -294,6 +294,9 @@
       t1.$flags = 1;
       return t1;
     },
+    JSArray_JSArray$markGrowable(allocation, $E) {
+      return A._setArrayType(allocation, $E._eval$1("JSArray<0>"));
+    },
     JSArray__compareAny(a, b) {
       var t1 = type$.Comparable_dynamic;
       return J.compareTo$1$ns(t1._as(a), t1._as(b));
@@ -1526,7 +1529,7 @@
         case 4:
           return closure.call$4(arg1, arg2, arg3, arg4);
       }
-      throw A.wrapException(new A._Exception("Unsupported number of arguments for wrapped closure"));
+      throw A.wrapException(A.Exception_Exception("Unsupported number of arguments for wrapped closure"));
     },
     convertDartClosureToJS(closure, arity) {
       var $function = closure.$identity;
@@ -2207,6 +2210,9 @@
       _.__js_helper$_index = t2;
       _.__js_helper$_current = null;
     },
+    _checkLength($length) {
+      return $length;
+    },
     _ensureNativeList(list) {
       var t1, result, i;
       if (type$.JSIndexable_dynamic._is(list))
@@ -2224,8 +2230,7 @@
       return new Uint8Array($length);
     },
     NativeUint8List_NativeUint8List$view(buffer, offsetInBytes, $length) {
-      var t1 = new Uint8Array(buffer, offsetInBytes);
-      return t1;
+      return $length == null ? new Uint8Array(buffer, offsetInBytes) : new Uint8Array(buffer, offsetInBytes, $length);
     },
     _checkValidIndex(index, list, $length) {
       if (index >>> 0 !== index || index >= $length)
@@ -5148,6 +5153,9 @@
     ConcurrentModificationError$(modifiedObject) {
       return new A.ConcurrentModificationError(modifiedObject);
     },
+    Exception_Exception(message) {
+      return new A._Exception(message);
+    },
     FormatException$(message, source, offset) {
       return new A.FormatException(message, source, offset);
     },
@@ -6500,6 +6508,13 @@
     NullRejectionException: function NullRejectionException(t0) {
       this.isUndefined = t0;
     },
+    max(a, b, $T) {
+      A.checkTypeBound($T, type$.num, "T", "max");
+      return Math.max($T._as(a), $T._as(b));
+    },
+    _JSSecureRandom: function _JSSecureRandom(t0) {
+      this._math$_buffer = t0;
+    },
     CanonicalizedMap: function CanonicalizedMap() {
     },
     CanonicalizedMap_addAll_closure: function CanonicalizedMap_addAll_closure(t0) {
@@ -7524,6 +7539,12 @@
       _._position = 0;
       _._lastMatchPosition = _._lastMatch = null;
     },
+    RNG: function RNG() {
+    },
+    CryptoRNG: function CryptoRNG() {
+    },
+    Uuid: function Uuid() {
+    },
     _EventStreamSubscription$(_target, _eventType, onData, _useCapture, $T) {
       var result,
         t1 = A._wrapZone(new A._EventStreamSubscription_closure(onData), type$.JSObject),
@@ -8176,9 +8197,107 @@
       return A._asyncStartSync($async$starttest, $async$completer);
     },
     checkstatus() {
+      var t1, rng, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13, t14, t15, t16, t17;
       if ($.$get$timer()._handle == null)
         $.timer = A.Timer_Timer(B.Duration_2000000, A.psctester__checkstatus$closure());
-      A.get(A.Uri_parse("control.json")).then$1$1(new A.checkstatus_closure(), type$.Null).catchError$1(new A.checkstatus_closure0());
+      $.$get$uuid();
+      t1 = null;
+      if (null == null)
+        rng = t1;
+      else
+        rng = t1;
+      if (rng == null)
+        rng = $.$get$V4State_random().generate$0();
+      t1 = rng.length;
+      if (6 >= t1)
+        return A.ioore(rng, 6);
+      t2 = rng[6];
+      rng.$flags & 2 && A.throwUnsupportedOperation(rng);
+      rng[6] = t2 & 15 | 64;
+      if (8 >= t1)
+        return A.ioore(rng, 8);
+      rng[8] = rng[8] & 63 | 128;
+      if (t1 < 16)
+        A.throwExpression(A.RangeError$("buffer too small: need 16: length=" + t1));
+      t2 = $.$get$UuidParsing__byteToHex();
+      t3 = rng[0];
+      if (!(t3 < 256))
+        return A.ioore(t2, t3);
+      t3 = t2[t3];
+      t4 = rng[1];
+      if (!(t4 < 256))
+        return A.ioore(t2, t4);
+      t4 = t2[t4];
+      t5 = rng[2];
+      if (!(t5 < 256))
+        return A.ioore(t2, t5);
+      t5 = t2[t5];
+      t6 = rng[3];
+      if (!(t6 < 256))
+        return A.ioore(t2, t6);
+      t6 = t2[t6];
+      t7 = rng[4];
+      if (!(t7 < 256))
+        return A.ioore(t2, t7);
+      t7 = t2[t7];
+      t8 = rng[5];
+      if (!(t8 < 256))
+        return A.ioore(t2, t8);
+      t8 = t2[t8];
+      t9 = rng[6];
+      if (!(t9 < 256))
+        return A.ioore(t2, t9);
+      t9 = t2[t9];
+      t10 = rng[7];
+      if (!(t10 < 256))
+        return A.ioore(t2, t10);
+      t10 = t2[t10];
+      t11 = rng[8];
+      if (!(t11 < 256))
+        return A.ioore(t2, t11);
+      t11 = t2[t11];
+      if (9 >= t1)
+        return A.ioore(rng, 9);
+      t12 = rng[9];
+      if (!(t12 < 256))
+        return A.ioore(t2, t12);
+      t12 = t2[t12];
+      if (10 >= t1)
+        return A.ioore(rng, 10);
+      t13 = rng[10];
+      if (!(t13 < 256))
+        return A.ioore(t2, t13);
+      t13 = t2[t13];
+      if (11 >= t1)
+        return A.ioore(rng, 11);
+      t14 = rng[11];
+      if (!(t14 < 256))
+        return A.ioore(t2, t14);
+      t14 = t2[t14];
+      if (12 >= t1)
+        return A.ioore(rng, 12);
+      t15 = rng[12];
+      if (!(t15 < 256))
+        return A.ioore(t2, t15);
+      t15 = t2[t15];
+      if (13 >= t1)
+        return A.ioore(rng, 13);
+      t16 = rng[13];
+      if (!(t16 < 256))
+        return A.ioore(t2, t16);
+      t16 = t2[t16];
+      if (14 >= t1)
+        return A.ioore(rng, 14);
+      t17 = rng[14];
+      if (!(t17 < 256))
+        return A.ioore(t2, t17);
+      t17 = t2[t17];
+      if (15 >= t1)
+        return A.ioore(rng, 15);
+      t1 = rng[15];
+      if (!(t1 < 256))
+        return A.ioore(t2, t1);
+      A.get(A.Uri_parse("control.json?uid=" + (t3 + t4 + t5 + t6 + "-" + t7 + t8 + "-" + t9 + t10 + "-" + t11 + t12 + "-" + t13 + t14 + t15 + t16 + t17 + t2[t1]))).then$1$1(new A.checkstatus_closure(), type$.Null).catchError$1(new A.checkstatus_closure0());
     },
     sizeMessageBlock() {
       var t2, t3, messageContent, height, yavailable,
@@ -8283,10 +8402,6 @@
     },
     throwLateFieldADI(fieldName) {
       throw A.initializeExceptionWrapper(A.LateError$fieldADI(fieldName), new Error());
-    },
-    max(a, b, $T) {
-      A.checkTypeBound($T, type$.num, "T", "max");
-      return Math.max($T._as(a), $T._as(b));
     },
     groupBy(values, key, $S, $T) {
       var t1, _i, element, t2, t3,
@@ -8936,6 +9051,34 @@
       if (isFinite(d))
         return d;
       throw A.wrapException(A.UnsupportedError$("" + receiver + ".floor()"));
+    },
+    toRadixString$1(receiver, radix) {
+      var result, t1, t2, match, exponent;
+      if (radix < 2 || radix > 36)
+        throw A.wrapException(A.RangeError$range(radix, 2, 36, "radix", null));
+      result = receiver.toString(radix);
+      t1 = result.length;
+      t2 = t1 - 1;
+      if (!(t2 >= 0))
+        return A.ioore(result, t2);
+      if (result.charCodeAt(t2) !== 41)
+        return result;
+      match = /^([\da-z]+)(?:\.([\da-z]+))?\(e\+(\d+)\)$/.exec(result);
+      if (match == null)
+        A.throwExpression(A.UnsupportedError$("Unexpected toString result: " + result));
+      t1 = match.length;
+      if (1 >= t1)
+        return A.ioore(match, 1);
+      result = match[1];
+      if (3 >= t1)
+        return A.ioore(match, 3);
+      exponent = +match[3];
+      t1 = match[2];
+      if (t1 != null) {
+        result += t1;
+        exponent -= t1.length;
+      }
+      return result + B.JSString_methods.$mul("0", exponent);
     },
     toString$0(receiver) {
       if (receiver === 0 && 1 / receiver < 0)
@@ -10394,8 +10537,7 @@
       return B.Type_ByteBuffer_rqD;
     },
     asUint8List$2(receiver, offsetInBytes, $length) {
-      var t1 = new Uint8Array(receiver, offsetInBytes);
-      return t1;
+      return $length == null ? new Uint8Array(receiver, offsetInBytes) : new Uint8Array(receiver, offsetInBytes, $length);
     },
     $isTrustedGetRuntimeType: 1,
     $isNativeByteBuffer: 1,
@@ -14291,6 +14433,41 @@
     },
     $isException: 1
   };
+  A._JSSecureRandom.prototype = {
+    _JSSecureRandom$0() {
+      var $crypto = self.crypto;
+      if ($crypto != null)
+        if ($crypto.getRandomValues != null)
+          return;
+      throw A.wrapException(A.UnsupportedError$("No source of cryptographically secure random numbers available."));
+    },
+    nextInt$1(max) {
+      var byteCount, t1, start, randomLimit, t2, t3, random, result;
+      if (max <= 0 || max > 4294967296)
+        throw A.wrapException(A.RangeError$("max must be in range 0 < max \u2264 2^32, was " + max));
+      if (max > 255)
+        if (max > 65535)
+          byteCount = max > 16777215 ? 4 : 3;
+        else
+          byteCount = 2;
+      else
+        byteCount = 1;
+      t1 = this._math$_buffer;
+      t1.$flags & 2 && A.throwUnsupportedOperation(t1, 11);
+      t1.setUint32(0, 0, false);
+      start = 4 - byteCount;
+      randomLimit = A._asInt(Math.pow(256, byteCount));
+      for (t2 = max - 1, t3 = (max & t2) >>> 0 === 0; true;) {
+        crypto.getRandomValues(J.asUint8List$2$x(B.NativeByteData_methods.get$buffer(t1), start, byteCount));
+        random = t1.getUint32(0, false);
+        if (t3)
+          return (random & t2) >>> 0;
+        result = random % max;
+        if (random - result + max < randomLimit)
+          return result;
+      }
+    }
+  };
   A.CanonicalizedMap.prototype = {
     $index(_, key) {
       var pair, _this = this;
@@ -14617,6 +14794,11 @@
     },
     call$2(value, header) {
       return this.call$3(value, header, null);
+    },
+    "call*": "call$3",
+    $requiredArgCount: 2,
+    $defaultValues() {
+      return [null];
     },
     $signature: 25
   };
@@ -16715,6 +16897,44 @@
       this.error$3$length$position("expected " + $name + ".", 0, this._position);
     }
   };
+  A.RNG.prototype = {
+    generate$0() {
+      var uint8list = this._generateInternal$0();
+      if (uint8list.length !== 16)
+        throw A.wrapException(A.Exception_Exception("The length of the Uint8list returned by the custom RNG must be 16."));
+      else
+        return uint8list;
+    }
+  };
+  A.CryptoRNG.prototype = {
+    _generateInternal$0() {
+      var i, k, t1, t2,
+        b = new Uint8Array(16);
+      for (i = 0; i < 16; i += 4) {
+        k = $.$get$CryptoRNG__secureRandom().nextInt$1(B.JSNumber_methods.toInt$0(Math.pow(2, 32)));
+        if (!(i < 16))
+          return A.ioore(b, i);
+        b[i] = k;
+        t1 = i + 1;
+        t2 = B.JSInt_methods._shrOtherPositive$1(k, 8);
+        if (!(t1 < 16))
+          return A.ioore(b, t1);
+        b[t1] = t2;
+        t2 = i + 2;
+        t1 = B.JSInt_methods._shrOtherPositive$1(k, 16);
+        if (!(t2 < 16))
+          return A.ioore(b, t2);
+        b[t2] = t1;
+        t1 = i + 3;
+        t2 = B.JSInt_methods._shrOtherPositive$1(k, 24);
+        if (!(t1 < 16))
+          return A.ioore(b, t1);
+        b[t1] = t2;
+      }
+      return b;
+    }
+  };
+  A.Uuid.prototype = {};
   A.EventStreamProvider.prototype = {};
   A._EventStream.prototype = {
     listen$4$cancelOnError$onDone$onError(onData, cancelOnError, onDone, onError) {
@@ -17004,7 +17224,7 @@
   };
   A.checkstatus_closure.prototype = {
     call$1(resp) {
-      var data, t1, exception, testbutton, msgs, _this, bell, t, button,
+      var data, t1, exception, filename, testbutton, form, msgs, _this, bell, t, button,
         _s8_ = "filename";
       type$.Response._as(resp);
       t1 = type$.dynamic;
@@ -17022,7 +17242,7 @@
       if (J.$eq$(J.$index$asx(t1, "status"), "done") && data.$index(0, _s8_) != null) {
         t1 = data;
         $.$get$timer().cancel$0();
-        A._asStringQ(t1.$index(0, _s8_));
+        filename = A._asStringQ(t1.$index(0, _s8_));
         A.show("#file_available");
         t1 = init.G;
         testbutton = A._asJSObjectQ(A._asJSObject(t1.document).querySelector("#testbutton"));
@@ -17030,6 +17250,11 @@
           testbutton = A._asJSObject(testbutton);
         testbutton.textContent = "New test";
         testbutton.disabled = false;
+        form = A._asJSObjectQ(A._asJSObject(t1.document).querySelector("#download_latest"));
+        if (form == null)
+          form = A._asJSObject(form);
+        form.method = "POST";
+        form.action = "/cgi-bin/getfile.py?filename=" + A.S(filename);
         msgs = A._asJSObjectQ(A._asJSObject(t1.document).querySelector("#messages"));
         if (msgs == null)
           msgs = A._asJSObject(msgs);
@@ -17118,7 +17343,9 @@
     _static_1(A, "async__AsyncRun__scheduleImmediateWithTimer$closure", "_AsyncRun__scheduleImmediateWithTimer", 11);
     _static_0(A, "async___startMicrotaskLoop$closure", "_startMicrotaskLoop", 0);
     _static_2(A, "async___nullErrorHandler$closure", "_nullErrorHandler", 8);
-    _instance(A._Completer.prototype, "get$completeError", 0, 1, null, ["call$2", "call$1"], ["completeError$2", "completeError$1"], 57, 0, 0);
+    _instance(A._Completer.prototype, "get$completeError", 0, 1, function() {
+      return [null];
+    }, ["call$2", "call$1"], ["completeError$2", "completeError$1"], 57, 0, 0);
     _instance_2_u(A._Future.prototype, "get$_completeError", "_completeError$2", 8);
     var _;
     _instance_1_u(_ = A._StreamController.prototype, "get$_add", "_add$1", 15);
@@ -17138,24 +17365,24 @@
     _static_1(A, "core__identityHashCode$closure", "identityHashCode", 13);
     _static_2(A, "core__identical$closure", "identical", 24);
     _static_1(A, "core_Uri_decodeComponent$closure", "Uri_decodeComponent", 5);
+    _static(A, "math__max$closure", 2, null, ["call$1$2", "call$2"], ["max", function(a, b) {
+      return A.max(a, b, type$.num);
+    }], 42, 1);
     _static_1(A, "case_insensitive_map_CaseInsensitiveMap__canonicalizer$closure", "CaseInsensitiveMap__canonicalizer", 5);
-    _static_1(A, "date_format_DateFormat_localeExists$closure", "DateFormat_localeExists", 42);
+    _static_1(A, "date_format_DateFormat_localeExists$closure", "DateFormat_localeExists", 39);
     _static_1(A, "intl_helpers__canonicalizedLocale$closure", "canonicalizedLocale", 20);
     _static_1(A, "intl_helpers__deprecatedLocale$closure", "deprecatedLocale", 5);
     _static_1(A, "intl_helpers__shortLocale$closure", "shortLocale", 5);
     _static_2(A, "psctester__sitesort$closure", "sitesort", 6);
     _static_2(A, "psctester__datesort$closure", "datesort", 6);
     _static_0(A, "psctester__checkstatus$closure", "checkstatus", 0);
-    _static(A, "math__max$closure", 2, null, ["call$1$2", "call$2"], ["max", function(a, b) {
-      return A.max(a, b, type$.num);
-    }], 39, 0);
   })();
   (function inheritance() {
     var _mixin = hunkHelpers.mixin,
       _inherit = hunkHelpers.inherit,
       _inheritMany = hunkHelpers.inheritMany;
     _inherit(A.Object, null);
-    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, A.SafeToStringHook, J.ArrayIterator, A.Iterable, A.CastIterator, A.Closure, A.Error, A.ListBase, A.SentinelValue, A.ListIterator, A.MappedIterator, A.WhereIterator, A.ExpandIterator, A.SkipIterator, A.EmptyIterator, A.WhereTypeIterator, A.FixedLengthListMixin, A.UnmodifiableListMixin, A.ConstantMap, A._KeysOrValuesOrElementsIterator, A.TypeErrorDecoder, A.NullThrownFromJavaScriptException, A.ExceptionAndStackTrace, A._StackTrace, A.MapBase, A.LinkedHashMapCell, A.LinkedHashMapKeyIterator, A.LinkedHashMapValueIterator, A.LinkedHashMapEntryIterator, A.JSSyntaxRegExp, A._MatchImplementation, A._AllMatchesIterator, A.StringMatch, A._StringAllMatchesIterator, A._UnmodifiableNativeByteBufferView, A.Rti, A._FunctionParameters, A._Type, A._TimerImpl, A._AsyncAwaitCompleter, A._AsyncStarStreamController, A._IterationMarker, A.AsyncError, A._Completer, A._FutureListener, A._Future, A._AsyncCallbackEntry, A.Stream, A._StreamController, A._AsyncStreamControllerDispatch, A._BufferingStreamSubscription, A._AddStreamState, A._DelayedEvent, A._DelayedDone, A._PendingEvents, A._DoneStreamSubscription, A._StreamIterator, A._Zone, A._HashMapKeyIterator, A._UnmodifiableMapMixin, A.MapView, A.Codec, A.Converter, A.ByteConversionSink, A._JsonStringifier, A._Utf8Encoder, A._Utf8Decoder, A.DateTime, A.Duration, A.OutOfMemoryError, A.StackOverflowError, A._Exception, A.FormatException, A.MapEntry, A.Null, A._StringStackTrace, A.StringBuffer, A._Uri, A.UriData, A._SimpleUri, A.NullRejectionException, A.CanonicalizedMap, A.ClientException, A.BaseClient, A.BaseRequest, A.BaseResponse, A.MediaType, A.DateSymbols, A.DateFormat, A._DateFormatField, A.UninitializedLocaleData, A.LocaleDataException, A.Context, A.Style, A.ParsedPath, A.PathException, A.SourceFile, A.SourceLocationMixin, A.SourceSpanMixin, A.Highlighter, A._Highlight, A._Line, A.SourceLocation, A.SourceSpanException, A.StringScanner, A.EventStreamProvider, A._EventStreamSubscription]);
+    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, A.SafeToStringHook, J.ArrayIterator, A.Iterable, A.CastIterator, A.Closure, A.Error, A.ListBase, A.SentinelValue, A.ListIterator, A.MappedIterator, A.WhereIterator, A.ExpandIterator, A.SkipIterator, A.EmptyIterator, A.WhereTypeIterator, A.FixedLengthListMixin, A.UnmodifiableListMixin, A.ConstantMap, A._KeysOrValuesOrElementsIterator, A.TypeErrorDecoder, A.NullThrownFromJavaScriptException, A.ExceptionAndStackTrace, A._StackTrace, A.MapBase, A.LinkedHashMapCell, A.LinkedHashMapKeyIterator, A.LinkedHashMapValueIterator, A.LinkedHashMapEntryIterator, A.JSSyntaxRegExp, A._MatchImplementation, A._AllMatchesIterator, A.StringMatch, A._StringAllMatchesIterator, A._UnmodifiableNativeByteBufferView, A.Rti, A._FunctionParameters, A._Type, A._TimerImpl, A._AsyncAwaitCompleter, A._AsyncStarStreamController, A._IterationMarker, A.AsyncError, A._Completer, A._FutureListener, A._Future, A._AsyncCallbackEntry, A.Stream, A._StreamController, A._AsyncStreamControllerDispatch, A._BufferingStreamSubscription, A._AddStreamState, A._DelayedEvent, A._DelayedDone, A._PendingEvents, A._DoneStreamSubscription, A._StreamIterator, A._Zone, A._HashMapKeyIterator, A._UnmodifiableMapMixin, A.MapView, A.Codec, A.Converter, A.ByteConversionSink, A._JsonStringifier, A._Utf8Encoder, A._Utf8Decoder, A.DateTime, A.Duration, A.OutOfMemoryError, A.StackOverflowError, A._Exception, A.FormatException, A.MapEntry, A.Null, A._StringStackTrace, A.StringBuffer, A._Uri, A.UriData, A._SimpleUri, A.NullRejectionException, A._JSSecureRandom, A.CanonicalizedMap, A.ClientException, A.BaseClient, A.BaseRequest, A.BaseResponse, A.MediaType, A.DateSymbols, A.DateFormat, A._DateFormatField, A.UninitializedLocaleData, A.LocaleDataException, A.Context, A.Style, A.ParsedPath, A.PathException, A.SourceFile, A.SourceLocationMixin, A.SourceSpanMixin, A.Highlighter, A._Highlight, A._Line, A.SourceLocation, A.SourceSpanException, A.StringScanner, A.RNG, A.Uuid, A.EventStreamProvider, A._EventStreamSubscription]);
     _inheritMany(J.Interceptor, [J.JSBool, J.JSNull, J.JavaScriptObject, J.JavaScriptBigInt, J.JavaScriptSymbol, J.JSNumber, J.JSString]);
     _inheritMany(J.JavaScriptObject, [J.LegacyJavaScriptObject, J.JSArray, A.NativeByteBuffer, A.NativeTypedData]);
     _inheritMany(J.LegacyJavaScriptObject, [J.PlainJavaScriptObject, J.UnknownJavaScriptObject, J.JavaScriptFunction]);
@@ -17228,6 +17455,7 @@
     _inherit(A.SourceSpanFormatException, A.SourceSpanException);
     _inherit(A.SourceSpanWithContext, A.SourceSpanBase);
     _inherit(A.StringScannerException, A.SourceSpanFormatException);
+    _inherit(A.CryptoRNG, A.RNG);
     _inherit(A._ElementEventStreamImpl, A._EventStream);
     _mixin(A.UnmodifiableListBase, A.UnmodifiableListMixin);
     _mixin(A.__CastListBase__CastIterableBase_ListMixin, A.ListBase);
@@ -17243,7 +17471,7 @@
     typeUniverse: {eC: new Map(), tR: {}, eT: {}, tPV: {}, sEA: []},
     mangledGlobalNames: {int: "int", double: "double", num: "num", String: "String", bool: "bool", Null: "Null", List: "List", Object: "Object", Map: "Map", JSObject: "JSObject"},
     mangledNames: {},
-    types: ["~()", "~(JSObject)", "Null()", "Null(@)", "Null(Response)", "String(String)", "int(@,@)", "~(@)", "~(Object,StackTrace)", "String(@)", "bool(_Highlight)", "~(~())", "bool(String)", "int(Object?)", "Null(Object,StackTrace)", "~(Object?)", "~(Object?,Object?)", "int(String?)", "Future<Response>(Client)", "String(Match)", "String(String?)", "int()", "@(@)", "@()", "bool(Object?,Object?)", "Null(String,String[Object?])", "bool(String,String)", "int(String)", "Null(~())", "~(int,@)", "~(List<int>)", "MediaType()", "~(String,String)", "Future<~>()", "DateTime(int,int,int,int,int,int,int,bool)", "_DateFormatQuotedField(String,DateFormat)", "_DateFormatPatternField(String,DateFormat)", "_DateFormatLiteralField(String,DateFormat)", "@(@,String)", "0^(0^,0^)<num>", "~(@,@)", "String?()", "bool(String?)", "@(String)", "Object(_Line)", "Object(_Highlight)", "int(_Highlight,_Highlight)", "List<_Line>(MapEntry<Object,List<_Highlight>>)", "~(String,int)", "SourceSpanWithContext()", "~(String,int?)", "Future<~>(JSObject)", "Null(@,StackTrace)", "int(int,int)", "_Future<@>?()", "Object?(Object?)", "bool(Object?)", "~(Object[StackTrace?])", "int(_Line)", "bool(Object)"],
+    types: ["~()", "~(JSObject)", "Null()", "Null(@)", "Null(Response)", "String(String)", "int(@,@)", "~(@)", "~(Object,StackTrace)", "String(@)", "bool(_Highlight)", "~(~())", "bool(String)", "int(Object?)", "Null(Object,StackTrace)", "~(Object?)", "~(Object?,Object?)", "int(String?)", "Future<Response>(Client)", "String(Match)", "String(String?)", "int()", "@(@)", "@()", "bool(Object?,Object?)", "Null(String,String[Object?])", "bool(String,String)", "int(String)", "Null(~())", "~(int,@)", "~(List<int>)", "MediaType()", "~(String,String)", "Future<~>()", "DateTime(int,int,int,int,int,int,int,bool)", "_DateFormatQuotedField(String,DateFormat)", "_DateFormatPatternField(String,DateFormat)", "_DateFormatLiteralField(String,DateFormat)", "@(@,String)", "bool(String?)", "~(@,@)", "String?()", "0^(0^,0^)<num>", "@(String)", "Object(_Line)", "Object(_Highlight)", "int(_Highlight,_Highlight)", "List<_Line>(MapEntry<Object,List<_Highlight>>)", "~(String,int)", "SourceSpanWithContext()", "~(String,int?)", "Future<~>(JSObject)", "Null(@,StackTrace)", "int(int,int)", "_Future<@>?()", "Object?(Object?)", "bool(Object?)", "~(Object[StackTrace?])", "int(_Line)", "bool(Object)"],
     interceptorsByTag: null,
     leafTags: null,
     arrayRti: Symbol("$ti")
@@ -17393,6 +17621,7 @@
     B.JSString_methods = J.JSString.prototype;
     B.JavaScriptFunction_methods = J.JavaScriptFunction.prototype;
     B.JavaScriptObject_methods = J.JavaScriptObject.prototype;
+    B.NativeByteData_methods = A.NativeByteData.prototype;
     B.NativeUint32List_methods = A.NativeUint32List.prototype;
     B.NativeUint8List_methods = A.NativeUint8List.prototype;
     B.PlainJavaScriptObject_methods = J.PlainJavaScriptObject.prototype;
@@ -17663,6 +17892,11 @@
     _lazyFinal($, "Encoding__nameToEncoding", "$get$Encoding__nameToEncoding", () => A.LinkedHashMap_LinkedHashMap$_literal(["iso_8859-1:1987", B.C_Latin1Codec, "iso-ir-100", B.C_Latin1Codec, "iso_8859-1", B.C_Latin1Codec, "iso-8859-1", B.C_Latin1Codec, "latin1", B.C_Latin1Codec, "l1", B.C_Latin1Codec, "ibm819", B.C_Latin1Codec, "cp819", B.C_Latin1Codec, "csisolatin1", B.C_Latin1Codec, "iso-ir-6", B.C_AsciiCodec, "ansi_x3.4-1968", B.C_AsciiCodec, "ansi_x3.4-1986", B.C_AsciiCodec, "iso_646.irv:1991", B.C_AsciiCodec, "iso646-us", B.C_AsciiCodec, "us-ascii", B.C_AsciiCodec, "us", B.C_AsciiCodec, "ibm367", B.C_AsciiCodec, "cp367", B.C_AsciiCodec, "csascii", B.C_AsciiCodec, "ascii", B.C_AsciiCodec, "csutf8", B.C_Utf8Codec, "utf-8", B.C_Utf8Codec], type$.String, A.findType("Encoding")));
     _lazyFinal($, "DateTime__parseFormat", "$get$DateTime__parseFormat", () => A.RegExp_RegExp("^([+-]?\\d{4,6})-?(\\d\\d)-?(\\d\\d)(?:[ T](\\d\\d)(?::?(\\d\\d)(?::?(\\d\\d)(?:[.,](\\d+))?)?)?( ?[zZ]| ?([-+])(\\d\\d)(?::?(\\d\\d))?)?)?$"));
     _lazyFinal($, "_hashSeed", "$get$_hashSeed", () => A.objectHashCode(B.Type_Object_A4p));
+    _lazyFinal($, "Random__secureRandom", "$get$Random__secureRandom", () => {
+      var t1 = new A._JSSecureRandom(new DataView(new ArrayBuffer(A._checkLength(8))));
+      t1._JSSecureRandom$0();
+      return t1;
+    });
     _lazyFinal($, "BaseRequest__tokenRE", "$get$BaseRequest__tokenRE", () => A.RegExp_RegExp("^[\\w!#%&'*+\\-.^`|~]+$"));
     _lazyFinal($, "_escapedChar", "$get$_escapedChar", () => A.RegExp_RegExp('["\\x00-\\x1F\\x7F]'));
     _lazyFinal($, "token", "$get$token", () => A.RegExp_RegExp('[^()<>@,;:"\\\\/[\\]?={} \\t\\x00-\\x1F\\x7F]+'));
@@ -17682,7 +17916,17 @@
     _lazyFinal($, "Style_windows", "$get$Style_windows", () => new A.WindowsStyle(A.RegExp_RegExp("[/\\\\]"), A.RegExp_RegExp("[^/\\\\]$"), A.RegExp_RegExp("^(\\\\\\\\[^\\\\]+\\\\[^\\\\/]+|[a-zA-Z]:[/\\\\])"), A.RegExp_RegExp("^[/\\\\](?![/\\\\])")));
     _lazyFinal($, "Style_url", "$get$Style_url", () => new A.UrlStyle(A.RegExp_RegExp("/"), A.RegExp_RegExp("(^[a-zA-Z][-+.a-zA-Z\\d]*://|[^/])$"), A.RegExp_RegExp("[a-zA-Z][-+.a-zA-Z\\d]*://[^/]*"), A.RegExp_RegExp("^/")));
     _lazyFinal($, "Style_platform", "$get$Style_platform", () => A.Style__getPlatformStyle());
+    _lazy($, "V4State_random", "$get$V4State_random", () => new A.CryptoRNG());
+    _lazyFinal($, "UuidParsing__byteToHex", "$get$UuidParsing__byteToHex", () => {
+      var i,
+        _list = J.JSArray_JSArray$markGrowable(new Array(256), type$.String);
+      for (i = 0; i < 256; ++i)
+        _list[i] = B.JSString_methods.padLeft$2(B.JSInt_methods.toRadixString$1(i, 16), 2, "0");
+      return _list;
+    });
+    _lazyFinal($, "CryptoRNG__secureRandom", "$get$CryptoRNG__secureRandom", () => $.$get$Random__secureRandom());
     _lazy($, "timer", "$get$timer", () => A.Timer_Timer(B.Duration_0, new A.timer_closure()));
+    _lazy($, "uuid", "$get$uuid", () => new A.Uuid());
   })();
   (function nativeSupport() {
     !function() {

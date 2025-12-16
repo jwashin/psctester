@@ -264,6 +264,7 @@ func main() {
 		out, err := cmd.Output()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			fmt.Printf("$err\n")
 			return
 		}
 		s := strings.ReplaceAll(string(out), "Content-type: text/plain\n", "")

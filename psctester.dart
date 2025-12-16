@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 
 final pollFrequency = const Duration(seconds: 2);
 
@@ -20,6 +21,7 @@ String downloadFile = "";
 Timer timer = Timer(const Duration(seconds: 0), () => 'OK');
 
 bool mainTimedOut = false;
+Uuid uuid = Uuid();
 
 String currTest = '';
 
@@ -812,7 +814,10 @@ void mainTimeout() {
 // if status is "tests in progress" at startup
 void checkstatus() {
   starttimer();
-  Uri path = Uri.parse('control.json');
+
+  String uid = uuid.v4();
+
+  Uri path = Uri.parse('control.json?uid=${uid}');
   http
       .get(path)
       .then((var resp) {
@@ -925,10 +930,12 @@ void doDoneStatus(Map data) {
 
   testbutton.textContent = "New test";
   testbutton.disabled = false;
-  // HTMLFormElement form =
-  //     document.querySelector('#download_latest') as HTMLFormElement;
-  // form.method = "POST";
-  // form.action = '/cgi-bin/getfile.py?filename=${filename}';
+
+  HTMLFormElement form =
+      document.querySelector('#download_latest') as HTMLFormElement;
+  form.method = "POST";
+  form.action = '/cgi-bin/getfile.py?filename=${filename}';
+
   HTMLDivElement msgs = document.querySelector('#messages') as HTMLDivElement;
   sizeMessageBlock();
   if (msgs.firstElementChild != null) {
