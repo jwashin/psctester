@@ -37,6 +37,7 @@ final _builderFactories = _i1.BuilderFactories(
       _i4.ddcModuleBuilder,
     ],
     'build_web_compilers:entrypoint': [_i4.webEntrypointBuilder],
+    'build_web_compilers:entrypoint_marker': [_i4.webEntrypointMarkerBuilder],
     'build_web_compilers:sdk_js': [
       _i4.sdkJsCompile,
       _i4.sdkJsCopyRequirejs,

@@ -4,7 +4,7 @@ import json
 import sys
 import os
 import random
-import cgi
+# import cgi
 from filesloc import filesloc
 
 
