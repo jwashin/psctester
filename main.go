@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
@@ -41,9 +42,18 @@ func makeReportDirs() {
 	os.MkdirAll(archives, 0755)
 }
 
+func getUser() string {
+	j, _ := user.Current()
+	if j != nil {
+		return j.Username
+	}
+	return "unknown"
+}
 func main() {
 	assureControlFile()
 	makeReportDirs()
+	user := getUser()
+	fmt.Printf("Running server as user: %s\n", user)
 
 	mux := http.NewServeMux()
 
@@ -250,7 +260,7 @@ func main() {
 			return
 		}
 		filename := "./cgi-bin/dotest.py"
-		if os.Getenv("PSC_TRIAL") != "" {
+		if user  != "root" {
 			filename = "./cgi-bin/jim_dotest.py"
 		}
 		var d Indata
@@ -324,9 +334,12 @@ func main() {
 	})
 
 	port := "8080"
-	if os.Getenv("PSC_PORT") != "" {
+
+	if user == "root"{
+		port = "80"
+	} else if os.Getenv("PSC_PORT") != "" {
 		port = os.Getenv("PSC_PORT")
-	}
+	} else{ port = "8080"}
 
 	fmt.Printf("Listening on :%s\n", port)
 	http.ListenAndServe(":"+port, mux)
