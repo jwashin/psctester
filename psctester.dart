@@ -36,7 +36,7 @@ final List<String> selectionModes = [
 
 void hide(String selector) {
   HTMLDivElement item = document.querySelector(selector) as HTMLDivElement;
-  item.ariaHidden = 'true';
+  // item.ariaHidden = 'true';
   // item.setAttribute('hidden', 'true');
   item.classList.add('hidden');
   // item.classes.add('hidden');
@@ -45,6 +45,7 @@ void hide(String selector) {
 void show(String selector) {
   HTMLDivElement item = document.querySelector(selector) as HTMLDivElement;
   // item.styles.hidden = false;
+  // item.ariaHidden = 'false';
   item.classList.remove('hidden');
   // item.hidden = false;
 }
@@ -703,15 +704,19 @@ Map getInputs() {
   }
   if (currTest == 'tmx3') {
     String x3 = "";
-    RadioNodeList radios =
-        document.querySelectorAll('input[name="tmx3"]') as RadioNodeList;
-    x3 = radios.value;
+    HTMLInputElement rad =
+        document.querySelector('input[name="tmx3"]:checked')
+            as HTMLInputElement;
+    x3 = rad.value;
+    // RadioNodeList radios =
+    //     document.querySelectorAll('input[name="tmx3"]') as RadioNodeList;
+    // x3 = radios.value;
 
-    Element ch = document.querySelector("#channel_input")!;
-    ch = ch as HTMLInputElement;
+    Element channelInput = document.querySelector("#channel_input")!;
+    channelInput = channelInput as HTMLInputElement;
     String v = "";
     var chv = [];
-    v = ch.value;
+    v = channelInput.value;
     var s = v.split("-");
     for (var i in s) {
       chv.add(int.parse(i));

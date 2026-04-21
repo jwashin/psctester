@@ -10,7 +10,7 @@ import 'dart:io' as _i5;
 import 'package:build_runner/src/bootstrap/processes.dart' as _i6;
 
 final _builderFactories = _i1.BuilderFactories(
-  builderFactories: {
+  {
     'build_modules:module_library': [_i2.moduleLibraryBuilder],
     'build_test:test_bootstrap': [
       _i3.debugIndexBuilder,
