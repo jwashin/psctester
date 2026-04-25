@@ -5,12 +5,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meter Tester</title>
+  <title>PSC Tester</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="stylesheet" href="psctester.css">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-  <link rel="manifest" href="site.webmanifest">
   <script defer src="psctester.dart.js"></script>
 </head>
 
@@ -34,8 +31,8 @@
 
   <section id="testing" class="hidden">
     <audio id="bell">
-      <source src="media/clong-2.wav" type="audio/wav">
-      <source src="media/clong-2.mp3" type="audio/mpeg">
+      <source src="clong-2.wav" type="audio/wav">
+      <source src="clong-2.mp3" type="audio/mpeg">
     </audio>
     <div><label for="siteid">Site ID: </label>
       <input type="number" min="150" max="2500" id="siteid" placeholder="Site ID">
@@ -75,7 +72,7 @@
   <section id="files" class="hidden">
 
     <div id="choosing">
-
+      
       <select id="modselect"></select>
 
       <form id="filesform" method="post">
@@ -84,7 +81,7 @@
         <button id="download">Download Zipfile</button>
         <button id="archive">Move files to Archive</button>
       </form>
-
+      
     </div>
 
     <button id="return_main2">Return to Main Page</button>
@@ -107,7 +104,7 @@
   <div id="messageblock" class="hidden">
     <div id="messages"></div>
   </div>
-
+  
 </body>
 
 </html>

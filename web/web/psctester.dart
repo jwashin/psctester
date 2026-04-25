@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
+// import 'package:uuid/uuid.dart';
 
 final pollFrequency = const Duration(seconds: 2);
 
@@ -21,7 +21,7 @@ String downloadFile = "";
 Timer timer = Timer(const Duration(seconds: 0), () => 'OK');
 
 bool mainTimedOut = false;
-Uuid uuid = Uuid();
+// Uuid uuid = Uuid();
 
 String currTest = '';
 
@@ -59,6 +59,36 @@ void main() {
   hide('#sysmaint');
   hide('#messageblock');
   showdate("#dt");
+
+  final eventSource = EventSource('/events');
+
+  eventSource.onMessage.listen((MessageEvent event) {
+    final String rawData = event.data?.toString() ?? '';
+
+    Map<String, dynamic> data;
+    try {
+      data = jsonDecode(rawData) as Map<String, dynamic>;
+      // print('Received event: ${data}');
+    } catch (e) {
+      print('Error decoding JSON: $e');
+      print('Raw data: ${rawData}');
+      return;
+    }
+
+    // Extract your LogWriter fields
+    final String status = data['status'] ?? 'No Status';
+    final String? filename = data['filename'];
+    final List<dynamic> messages = data['messages'] ?? [];
+    updateDashboard(status, messages);
+    if (status == 'done' && filename != null) {
+      // eventSource.close(); // Stop the stream
+      doDoneStatus(data);
+    }
+  });
+
+  // 3. Optional: Handle connection state
+  eventSource.onOpen.listen((_) => print('Connected to SSE Stream'));
+  eventSource.onError.listen((_) => print('SSE Connection Error/Lost'));
 
   HTMLButtonElement tmx5button =
       document.querySelector("#test_tmx5") as HTMLButtonElement;
@@ -135,7 +165,7 @@ void main() {
   //   }
   // });
 
-  checkstatus();
+  // checkstatus();
 }
 
 void doFiles(Event event) {
@@ -782,7 +812,7 @@ void starttest(Event event) async {
     //String address = getSiteId();
 
     String out = jsonEncode(getInputs());
-    starttimer();
+
     var response = await http.post(
       path,
       headers: {'Content-Type': 'application/json'},
@@ -792,15 +822,6 @@ void starttest(Event event) async {
     if (response.statusCode != 200) {
       window.alert('Error starting test: ${response.statusCode}');
     }
-
-    // request.send(out);
-
-    ////  HttpRequest.getString(path).then((data) {
-    //    HeadingElement top = document.querySelector("#top");
-    //    top.scrollIntoView();
-    //  });
-
-    // timer = Timer(Duration(seconds: 5), checkstatus);
   }
 }
 
@@ -817,81 +838,79 @@ void mainTimeout() {
 
 // put the display in "test in progress" mode
 // if status is "tests in progress" at startup
-void checkstatus() {
-  starttimer();
+// void startStatusStream() {
+//   // Use a relative path. The browser prepends the current IP/Port automatically.
 
-  String uid = uuid.v4();
+//   source.onmessage = (MessageEvent event) {
+//     final String rawData = (event.data as JSString).toDart;
+//     console.log(("Received event: ${rawData}").toJS);
 
-  Uri path = Uri.parse('control.json?uid=${uid}');
-  http
-      .get(path)
-      .then((var resp) {
-        Map? data = {};
-        try {
-          data = jsonDecode(resp.body);
-        } on FormatException {
-          // got incomplete JSON file
-          // starttimer();
-          return;
-        }
-        if (data!['status'] == 'done' && data['filename'] != null) {
-          doDoneStatus(data);
-          return;
-          // } else if (data['status'] == 'new test') {
-          //   starttimer();
-          //   return;
-        } else if (data['status'] == 'tests in progress') {
-          // if (data['status'] == 'tests in progress') {
-          show('#testing');
-          hide("#main");
-          hide('#serial_entry');
-          showmessages(data['messages']);
-          starttimer();
-          if (data['address'] != null) {
-            HTMLInputElement t =
-                document.querySelector('#siteid') as HTMLInputElement;
-            t.value = data['address'];
-            t.disabled = true;
+//     if (rawData.isEmpty) {
+//       return; // Skip if Go is still writing/file is empty
+//     }
+//     if (rawData.contains("heartbeat")) {
+//       return;
+//     }
 
-            show('#messageblock');
-            rtMainEnable();
-            // // window.alert("test in progress");
-            // if (currTest != '') {
-            //   InputElement t = document.querySelector("#siteid") as InputElement;
-            //   t.value = "Testing - ${data['address']}";
-            //   // t.value = data['address'];
-            //   t.disabled = true;
-            //   show("#siteid");
-            //   if (data['serial'] != null) {
-            //     InputElement? ie = document.querySelector("#serial") as InputElement?;
-            //     if (ie != null) {
-            //       var serial = data['serial'];
-            //       if (serial != null && serial != '') {
-            //         ie.value = serial;
-            //       }
-            //       ie.disabled = true;
-            //       show("#serial");
-            //     }
-            //   }
-            HTMLButtonElement? button =
-                document.querySelector("#testbutton") as HTMLButtonElement?;
-            if (button != null) {
-              button.textContent = "Test in progress";
-              button.disabled = true;
-              show("#testbutton");
-            }
-            // }
-          }
-          // return;
-        }
-        // ButtonElement testbutton = document.querySelector("#testbutton") as ButtonElement;
-        // testbutton.text = 'Retry';
-        // testbutton.disabled = false;
-      })
-      .catchError((e) {
-        noControlFile(e);
-        return null;
-      });
+//     // 1. Decode the JSON
+//     Map data;
+//     try {
+//       data = jsonDecode(rawData);
+//     } catch (e) {
+//       window.alert("Received invalid JSON data: ${rawData}");
+//       return; // Skip if Go is still writing/file is empty
+//     }
+
+//     // 2. Handle "Done" State
+//     if (data['status'] == 'done' && data['filename'] != null) {
+//       source.close(); // Stop the stream
+//       doDoneStatus(data);
+//       return;
+//     }
+
+//     // 3. Handle "In Progress" State
+//     if (data['status'] == 'tests in progress') {
+//       document.querySelector('#testing')?.classList.remove('hidden');
+//       document.querySelector('#main')?.classList.add('hidden');
+
+//       // Update messages
+//       if (data['messages'] != null) {
+//         showmessages(data['messages']);
+//       }
+
+//       // Handle UI Updates (replacing the old HTMLInputElement casts)
+//       if (data['address'] != null) {
+//         final siteId = document.querySelector('#siteid') as HTMLInputElement;
+//         siteId.value = data['address'];
+//         siteId.disabled = true;
+
+//         document.querySelector('#messageblock')?.classList.remove('hidden');
+//         rtMainEnable();
+//       }
+
+//       final button =
+//           document.querySelector("#testbutton") as HTMLButtonElement?;
+//       if (button != null) {
+//         button.textContent = "Test in progress";
+//         button.disabled = true;
+//       }
+//     }
+//   }.toJS;
+
+//   source.onerror = (Event e) {
+//     // No need to call starttimer(). EventSource auto-reconnects!
+//     print("Stream connection lost. Reconnecting...");
+//   }.toJS;
+// }
+
+void updateDashboard(String status, List messages) {
+  if (status == 'tests in progress') {
+    document.querySelector('#testing')?.classList.remove('hidden');
+    document.querySelector('#main')?.classList.add('hidden');
+  }
+  if (messages.isNotEmpty) {
+    showmessages(messages);
+  }
 }
 
 void sizeMessageBlock() {
@@ -913,11 +932,11 @@ void sizeMessageBlock() {
   messageContent.style.height = "${ht - 60}px";
 }
 
-void starttimer() {
-  if (!timer.isActive) {
-    timer = Timer(pollFrequency, checkstatus);
-  }
-}
+// void starttimer() {
+//   if (!timer.isActive) {
+//     timer = Timer(pollFrequency, checkstatus);
+//   }
+// }
 
 void doDoneStatus(Map data) {
   timer.cancel();
@@ -967,17 +986,17 @@ void doDoneStatus(Map data) {
 //   }
 // }
 
-void noControlFile(Event event) {
-  //window.alert("Warning: Control file not found. (harmless!)");
-  //InputElement t = document.querySelector("#address");
-  //t.disabled = true;
-  //t.value = 'Press "New test" to begin.';
-  window.alert('${event}');
-  HTMLButtonElement button =
-      document.querySelector("#testbutton") as HTMLButtonElement;
-  button.disabled = false;
-  starttimer();
-}
+// void noControlFile(Event event) {
+//   //window.alert("Warning: Control file not found. (harmless!)");
+//   //InputElement t = document.querySelector("#address");
+//   //t.disabled = true;
+//   //t.value = 'Press "New test" to begin.';
+//   window.alert('${event}');
+//   HTMLButtonElement button =
+//       document.querySelector("#testbutton") as HTMLButtonElement;
+//   button.disabled = false;
+//   // starttimer();
+// }
 
 void showmessages(List aList) {
   HTMLDivElement liststart =

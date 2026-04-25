@@ -3,8 +3,6 @@ import os
 import datetime
 import time
 import json
-import fcntl
-
 VERSION = 2.02
 
 SNAME = "logwriter.py"
@@ -67,31 +65,11 @@ class LogWriter(object):
     #         json.dump(self.data, f, indent=2)
     #         os.replace(self.filename + ".tmp", self.filename) # This updates the
     #         # file atomically, which can be important
-
     def _write(self):
-        # Open in 'r+' mode to write in-place without deleting the file
-        # If it doesn't exist, 'a+' or checking existence first is safer
-        try:
-            with open(self.filename, 'r+') as f:
-                # 1. Acquire an exclusive lock
-                fcntl.flock(f, fcntl.LOCK_EX)
-                
-                # 2. Clear the old content and write new JSON
-                f.seek(0)
-                json_str = json.dumps(self.data)
-                f.write(json_str)
-                f.truncate() 
-                
-                # 3. Force the OS to flush to disk
-                f.flush()
-                os.fsync(f.fileno())
-                
-                # 4. Release lock
-                fcntl.flock(f, fcntl.LOCK_UN)
-        except FileNotFoundError:
-            # Fallback for the very first write
-            with open(self.filename, 'w') as f:
-                json.dump(self.data, f)
+        with open(TEMP_PATH, "w") as f:
+            json.dump(data, f, indent=2)
+        # Atomic swap within RAM
+        os.replace(TEMP_PATH, SHARED_MEMORY_PATH)
 
     def setserial(self, s):
         self.data['serial'] = s
@@ -118,7 +96,7 @@ class LogWriter(object):
 
 
 currentdirectory = os.path.dirname(__file__)
-thefile = SHARED_MEMORY_PATH
+thefile = os.path.join(currentdirectory, "..",  "control.json")
 logwriter = LogWriter(thefile)
 
 if __name__ == '__main__':

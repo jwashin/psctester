@@ -18,11 +18,10 @@ def dotest():
     except:
         indata = {}
 
-    # print("indata was {} ({})".format(indata, z))
+    print("indata was {} ({})".format(indata, z))
 
-    address = indata.get('siteid', "SiteId missing")
-    serial = indata.get('serial', "Serial missing")
-
+    address = indata['siteid']
+    serial = indata['serial']
 
     lw.message('starting up')
 
@@ -41,19 +40,19 @@ def dotest():
     # time.sleep(600)
 
     time.sleep(random.randint(1, 10))
-    for k in range(10):
-        lw.message('first stage%d' % k )
+    for k in range(30):
+        lw.message('first stage')
 
-        time.sleep(random.randint(1, 4))
+    time.sleep(random.randint(1, 10))
 
-    for k in range(10):
-        lw.message('second stage %d' % k)
+    for k in range(30):
+        lw.message('second stage')
 
-        time.sleep(random.randint(1, 4))
+    time.sleep(random.randint(1, 10))
 
     lw.message('third stage')
 
-    time.sleep(random.randint(1, 5))
+    time.sleep(random.randint(1, 10))
 
     filename = 'test.csv'
 

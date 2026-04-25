@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -13,11 +15,21 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 var filesloc = ""
 var archives = ""
+
+const logPath = "/dev/shm/control.json"
+
+var (
+	currentCmd *exec.Cmd
+	mu         sync.Mutex
+)
 
 func makeReportDirs() {
 	curdir, _ := os.Getwd()
@@ -61,12 +73,22 @@ func main() {
 	mime.AddExtensionType(".js", "text/javascript")
 	mime.AddExtensionType(".css", "text/css")
 
-	wwwroot := "./build"
+	wwwroot := "."
 
-	_, err := os.Stat("build")
+	_, err := os.Stat("index.html")
 	if errors.Is(err, os.ErrNotExist) {
-		wwwroot = ""
+		wwwroot = "./build"
 	}
+
+	// _, err := os.Stat("build")
+	// if errors.Is(err, os.ErrNotExist) {
+	// 	wwwroot = ""
+	// }
+	// server side events for the web app
+
+	mux.HandleFunc("/cgi-bin/dotest.py", startHandler)
+	mux.HandleFunc("/stop", stopHandler)
+	mux.HandleFunc("/events", sseHandler)
 
 	// index
 	mux.Handle("/", http.FileServer(http.Dir(wwwroot)))
@@ -254,34 +276,34 @@ func main() {
 		w.Write([]byte(s))
 	})
 
-	mux.HandleFunc("/cgi-bin/dotest.py", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		filename := "./cgi-bin/dotest.py"
-		if user  != "root" {
-			filename = "./cgi-bin/jim_dotest.py"
-		}
-		var d Indata
-		if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
-			http.Error(w, "invalid json", http.StatusBadRequest)
-			return
-		}
-		st, _ := json.Marshal(&d)
-		cmd := exec.Command("python3", filename)
-		cmd.Stdin = bytes.NewReader(st)
-		out, err := cmd.Output()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			fmt.Printf("$err\n")
-			return
-		}
-		s := strings.ReplaceAll(string(out), "Content-type: text/plain\n", "")
-		s = strings.ReplaceAll(s, "Content-type: application/json\n", "")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(s))
-	})
+	// mux.HandleFunc("/cgi-bin/dotest.py", func(w http.ResponseWriter, r *http.Request) {
+	// 	if r.Method != http.MethodPost {
+	// 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	// 		return
+	// 	}
+	// 	filename := "./cgi-bin/dotest.py"
+	// 	if user != "root" {
+	// 		filename = "./cgi-bin/jim_dotest.py"
+	// 	}
+	// 	var d Indata
+	// 	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
+	// 		http.Error(w, "invalid json", http.StatusBadRequest)
+	// 		return
+	// 	}
+	// 	st, _ := json.Marshal(&d)
+	// 	cmd := exec.Command("python3", filename)
+	// 	cmd.Stdin = bytes.NewReader(st)
+	// 	out, err := cmd.Output()
+	// 	if err != nil {
+	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 		fmt.Printf("$err\n")
+	// 		return
+	// 	}
+	// 	s := strings.ReplaceAll(string(out), "Content-type: text/plain\n", "")
+	// 	s = strings.ReplaceAll(s, "Content-type: application/json\n", "")
+	// 	w.WriteHeader(http.StatusOK)
+	// 	w.Write([]byte(s))
+	// })
 
 	mux.HandleFunc("/cgi-bin/initcontrolfile.py", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -335,14 +357,182 @@ func main() {
 
 	port := "8080"
 
-	if user == "root"{
+	if user == "root" {
 		port = "80"
 	} else if os.Getenv("PSC_PORT") != "" {
 		port = os.Getenv("PSC_PORT")
-	} else{ port = "8080"}
+	} else {
+		port = "8080"
+	}
 
 	fmt.Printf("Listening on :%s\n", port)
 	http.ListenAndServe(":"+port, mux)
+}
+
+func sseHandler(w http.ResponseWriter, r *http.Request) {
+	// 1. Set headers for SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		return
+	}
+
+	// 2. Setup fsnotify watcher
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Printf("Watcher error: %v", err)
+		return
+	}
+	defer watcher.Close()
+
+	// Monitor the specific control file
+	controlFilePath := "/dev/shm/control.json"
+	err = watcher.Add(controlFilePath)
+	if err != nil {
+		log.Printf("Add file error: %v", err)
+	}
+
+	// 3. Setup Heartbeat Ticker (15 seconds)
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	fmt.Println("Client connected to SSE")
+
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+			// Only trigger on Write events (or Chmod if metadata changes)
+			if event.Op&fsnotify.Write == fsnotify.Write {
+				data, err := os.ReadFile(controlFilePath)
+				if err == nil && len(data) > 0 {
+
+					var js json.RawMessage
+					if err := json.Unmarshal(data, &js); err == nil {
+
+						fmt.Fprintf(w, "data: %s\n\n", string(data))
+						flusher.Flush()
+					} else {
+						log.Printf("Invalid JSON in control file: %s", string(data))
+					}
+				}
+			}
+
+		case <-ticker.C:
+			// Send heartbeat to keep the connection alive
+			fmt.Fprintf(w, ": heartbeat\n\n")
+			flusher.Flush()
+
+		case <-r.Context().Done():
+			// Client closed the connection
+			fmt.Println("Client disconnected")
+			return
+		}
+	}
+}
+func sendUpdate(w http.ResponseWriter, flusher http.Flusher) {
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		return
+	}
+	fmt.Fprintf(w, "%s\n\n", string(data))
+	flusher.Flush()
+}
+func startHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Use POST", 405)
+		return
+	}
+
+	jsondata, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Read error", 400)
+		return
+	}
+
+	mu.Lock()
+	// Don't start if already running
+	if currentCmd != nil && (currentCmd.Process != nil && currentCmd.ProcessState == nil) {
+		mu.Unlock()
+		http.Error(w, "Process already running", 409)
+		return
+	}
+
+	filename := "./cgi-bin/dotest.py"
+	if getUser() != "root" {
+		filename = "./cgi-bin/jim_dotest.py"
+	}
+
+	cmd := exec.Command("/usr/bin/python3", "-u", filename)
+
+	// CRITICAL: Connect Python's output to Go's console so you can see prints/errors
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		mu.Unlock()
+		http.Error(w, "Pipe error", 500)
+		return
+	}
+
+	if err := cmd.Start(); err != nil {
+		mu.Unlock()
+		http.Error(w, "Failed to start", 500)
+		currentCmd = nil
+		return
+	}
+
+	currentCmd = cmd
+	mu.Unlock() // Unlock early so other handlers can check currentCmd
+
+	// Handle Stdin and Waiting in the background
+	go func() {
+		// This 'defer' tells Python: "That's all the data you're getting!"
+		defer stdin.Close()
+
+		_, err := stdin.Write(jsondata)
+		if err != nil {
+			fmt.Printf("Error writing to Python stdin: %v\n", err)
+			return
+		}
+		// fmt.Printf("Successfully wrote %d bytes to Python stdin\n", n)
+	}()
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"status": "started", "pid": %d}`, cmd.Process.Pid)
+	go func(cmd *exec.Cmd) {
+		err := cmd.Wait() // This populates ProcessState
+
+		mu.Lock()
+
+		if err != nil {
+			log.Printf("Process exited with error: %v", err)
+		} else {
+			log.Println("Process finished successfully")
+		}
+		currentCmd = nil
+		mu.Unlock()
+		// (Depending on if you want to keep the record of the last run)
+	}(currentCmd)
+
+	fmt.Fprint(w, "Started")
+
+}
+
+func stopHandler(w http.ResponseWriter, r *http.Request) {
+	mu.Lock()
+	defer mu.Unlock()
+	if currentCmd != nil && currentCmd.Process != nil {
+		currentCmd.Process.Kill()
+	}
 }
 
 type ControlFile struct {
