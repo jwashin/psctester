@@ -60,6 +60,12 @@ void main() {
   hide('#messageblock');
   showdate("#dt");
 
+  HTMLButtonElement stopButton =
+      document.querySelector("#stopbutton") as HTMLButtonElement;
+  stopButton.onClick.listen((e) {
+    doStop();
+  });
+
   final eventSource = EventSource('/events');
 
   eventSource.onMessage.listen((MessageEvent event) {
@@ -74,7 +80,8 @@ void main() {
       print('Raw data: ${rawData}');
       return;
     }
-
+    hide('#testinput');
+    show('#testing');
     // Extract your LogWriter fields
     final String status = data['status'] ?? 'No Status';
     final String? filename = data['filename'];
@@ -187,7 +194,7 @@ void doFiles(Event event) {
   HTMLButtonElement download =
       document.querySelector('#download') as HTMLButtonElement;
   download.onClick.listen((Event e) {
-    makeZipfile(e);
+    downloadCombinedCsv(e);
   });
   HTMLButtonElement archive =
       document.querySelector('#archive') as HTMLButtonElement;
@@ -212,7 +219,7 @@ void doTmx4(Event event) {
 
 void doTmx1(Event event) {
   currTest = 'tmx1';
-  show("#testing");
+  show("#testinput");
   show('#serial_entry');
   // Element testing = document.querySelector("#testing")!;
   // testing.classes.remove('hidden');
@@ -226,7 +233,7 @@ void doTmx1(Event event) {
 
 void doTmx3(Event event) {
   currTest = 'tmx3';
-  show("#testing");
+  show("#testinput");
   show('#serial_entry');
   show('#tmx3_type');
   // Element testing = document.querySelector("#testing")!;
@@ -256,7 +263,7 @@ void enableTest() {
 }
 
 void doTmx5(Event event) {
-  show("#testing");
+  show("#testinput");
   hide("#serial_entry");
   // Element s = document.querySelector()!;
   // s.classes.add('hidden');
@@ -274,7 +281,7 @@ void doTmx5(Event event) {
 }
 
 void doTmx5n(Event event) {
-  show("#testing");
+  show("#testinput");
   hide("#serial_entry");
   // Element s = document.querySelector()!;
   // s.classes.add('hidden');
@@ -292,7 +299,7 @@ void doTmx5n(Event event) {
 }
 
 void doQfam(Event event) {
-  show("#testing");
+  show("#testinput");
   hide("#serial_entry");
   // Element s = document.querySelector()!;
   // s.classes.add('hidden');
@@ -521,48 +528,135 @@ Future<void> archiveFiles(Event event) async {
   }
 }
 
-void makeZipfile(Event event) {
-  HTMLFormElement theForm =
-      document.querySelector('#filesform') as HTMLFormElement;
-  theForm.action = '/cgi-bin/get_zip.py';
-  HTMLSelectElement downloads =
-      document.querySelector("#downloads") as HTMLSelectElement;
-  if (downloads.value.isEmpty) {
+void downloadCombinedCsv(Event event) {
+  event.preventDefault();
+
+  final downloads = document.querySelector("#downloads") as HTMLSelectElement;
+  final files = <String>[];
+
+  final options = downloads.options;
+  for (int i = 0; i < options.length; i++) {
+    final option = options.item(i) as HTMLOptionElement;
+    if (option.selected) {
+      files.add(option.value);
+    }
+  }
+  if (files.isEmpty) {
     event.preventDefault();
     event.stopPropagation();
     window.alert('Please select files for download,');
     return;
   }
-  //  HttpRequest request = new HttpRequest();
-  //
-  //  request.onLoadEnd.listen((e) {
-  ////    String resp = request.responseText;
-  //    //Map data = JSON.decode(resp);
-  //    //if (data['resp'] == true){
-  //      //get_zipfile();
-  //    //}
-  //
-  //  });
-  //  request.onTimeout.listen((e) {
-  //
-  //  });
-  //
-  //  request.setRequestHeader('Content-type', 'application/json');
-  //
-  //  String path = 'cgi-bin/get_zip.py';
-  //
-  //  request.open('POST', path);
-  //  //String address = getSiteId();
-  //  List theList = [];
-  //  for (OptionElement o in downloads.children)
-  //    if (o.selected == true){
-  //      theList.add(o.value);
-  //    }
-  //
-  //  String out = JSON.encode({'files':theList});
-  //  request.send(out);
-  //
-  //
+
+  // Create a hidden form to 'POST' the data
+  final form = document.createElement('form') as HTMLFormElement;
+  form.method = 'POST';
+  form.action = '/cgi-bin/get_combined.py';
+
+  final input = document.createElement('input') as HTMLInputElement;
+  input.type = 'hidden';
+  input.name = 'files';
+  input.value = files.join(',');
+
+  form.append(input);
+  document.body!.append(form);
+  form.submit();
+  form.remove();
+}
+
+void makeZipfile(Event event) async {
+  event.preventDefault();
+  // HTMLFormElement theForm =
+  // document.querySelector('#filesform') as HTMLFormElement;
+  // theForm.action = '/cgi-bin/get_zip.py';
+
+  HTMLSelectElement downloads =
+      document.querySelector("#downloads") as HTMLSelectElement;
+  List<String> files = [];
+
+  final options = downloads.options;
+  for (int i = 0; i < options.length; i++) {
+    final option = options.item(i) as HTMLOptionElement;
+    if (option.selected) {
+      files.add(option.value);
+    }
+  }
+  if (files.isEmpty) {
+    event.preventDefault();
+    event.stopPropagation();
+    window.alert('Please select files for download,');
+    return;
+  }
+
+  Uri path = Uri.parse('/cgi-bin/get_zip.py');
+
+  try {
+    final response = await http.post(path, body: {'files': files.join(',')});
+    window.alert('response received, status code: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      // 2. Wrap the bytes in a Blob
+      final blob = Blob(
+        [response.bodyBytes.toJS].toJS,
+        BlobPropertyBag(type: 'application/zip'),
+      );
+      final url = URL.createObjectURL(blob);
+
+      // 3. Trigger the browser save dialog
+      final anchor = document.createElement('a') as HTMLAnchorElement;
+      anchor.href = url;
+      anchor.target = '_blank';
+      // acc_2026-04-25_13-00.zip
+      String date = DateTime.now().toIso8601String().replaceAll(':', '-');
+      String filename = 'acc_${date}.zip';
+      anchor.download = filename;
+
+      // Append, click, and remove to ensure browser compatibility
+      document.body!.append(anchor);
+      anchor.click();
+      anchor.remove();
+
+      // 5. Cleanup memory
+      URL.revokeObjectURL(url);
+    } else {
+      // Handle error (e.g., show an alert on the phone)
+      window.alert('Download failed: ${response.statusCode}');
+    }
+
+    //  HttpRequest request = new HttpRequest();
+    //
+    //  request.onLoadEnd.listen((e) {
+    ////    String resp = request.responseText;
+    //    //Map data = JSON.decode(resp);
+    //    //if (data['resp'] == true){
+    //      //get_zipfile();
+    //    //}
+    //
+    //  });
+    //  request.onTimeout.listen((e) {
+    //
+    //  });
+    //
+    //  request.setRequestHeader('Content-type', 'application/json');
+    //
+    //  String path = 'cgi-bin/get_zip.py';
+    //
+    //  request.open('POST', path);
+    //  //String address = getSiteId();
+    //  List theList = [];
+    //  for (OptionElement o in downloads.children)
+    //    if (o.selected == true){
+    //      theList.add(o.value);
+    //    }
+    //
+    //  String out = JSON.encode({'files':theList});
+    //  request.send(out);
+    //
+    //
+  } catch (e) {
+    console.error('Full Error: $e'.toJS);
+    window.alert('Error caught: $e');
+  }
 }
 
 void doFileSelection() {
@@ -789,15 +883,16 @@ void starttest(Event event) async {
     sizeMessageBlock();
 
     hide('#file_available');
+    show('#testing');
+    HTMLDivElement messageBlock =
+        document.querySelector('#messages') as HTMLDivElement;
 
-    HTMLDivElement z = document.querySelector('#messages') as HTMLDivElement;
-
-    while (z.firstElementChild != null) {
-      z.firstElementChild?.remove();
+    while (messageBlock.firstElementChild != null) {
+      messageBlock.firstElementChild?.remove();
     }
     var ok = HTMLParagraphElement();
     ok.textContent = "OK. Starting test.";
-    z.append(ok);
+    messageBlock.append(ok);
 
     // HttpRequest request = HttpRequest();
     // request.onLoadEnd.listen((e) {
@@ -818,7 +913,7 @@ void starttest(Event event) async {
       headers: {'Content-Type': 'application/json'},
       body: out,
     );
-
+    hide('#testinput');
     if (response.statusCode != 200) {
       window.alert('Error starting test: ${response.statusCode}');
     }
@@ -1019,5 +1114,13 @@ void showmessages(List aList) {
     liststart.append(z);
     sizeMessageBlock();
     z.scrollIntoView();
+  }
+}
+
+Future<void> doStop() async {
+  var url = Uri.parse('/stop');
+  var response = await http.post(url);
+  if (response.statusCode == 200) {
+    print('Stop signal received by Go.');
   }
 }

@@ -5,7 +5,7 @@ import time
 import json
 import fcntl
 
-VERSION = 2.02
+VERSION = 3.0
 
 SNAME = "logwriter.py"
 

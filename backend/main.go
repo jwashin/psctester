@@ -2,7 +2,7 @@ package main
 
 import (
 	"archive/zip"
-	"bytes"
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -62,6 +62,8 @@ func getUser() string {
 	return "unknown"
 }
 func main() {
+
+	// log.SetOutput(os.Stdout)
 	assureControlFile()
 	makeReportDirs()
 	user := getUser()
@@ -202,46 +204,112 @@ func main() {
 		w.Write([]byte("Archived: " + strings.Join(files, ";")))
 	})
 
+	mux.HandleFunc("/cgi-bin/get_combined.py", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		filesRaw := r.FormValue("files")
+		files := strings.Split(filesRaw, ",")
+
+		// Filename: combined_logs_2026-04-25_17-00.csv
+		date := time.Now().Format("2006-01-02_15-04")
+
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment; filename=\"combined_logs_"+date+".csv\"")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		// Use a buffered writer for efficiency
+		bw := bufio.NewWriter(w)
+		defer bw.Flush()
+
+		for _, v := range files {
+			if v == "" {
+				continue
+			}
+
+			safeName := filepath.Base(v)
+			fullPath := filepath.Join(filesloc, safeName)
+
+			file, err := os.Open(fullPath)
+			if err != nil {
+				// Log to terminal so you can see if a file was missing
+				fmt.Fprintf(os.Stderr, "Warning: could not find %s\n", fullPath)
+				continue
+			}
+
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				// Prepend filename as the first column
+				line := scanner.Text()
+				if line != "" {
+					fmt.Fprintf(bw, "%s,%s\n", safeName, line)
+				}
+			}
+			file.Close()
+		}
+	})
+
 	mux.HandleFunc("/cgi-bin/get_zip.py", func(w http.ResponseWriter, r *http.Request) {
+
+		fmt.Printf("Zip requested with method: %s\n", r.Method)
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "invalid form", http.StatusBadRequest)
+
+		// if err := r.ParseForm(); err != nil {
+		// 	http.Error(w, "invalid form", http.StatusBadRequest)
+		// 	return
+		// }
+
+		selectedFiles := strings.Split(r.FormValue("files"), ",")
+
+		fmt.Printf("Requested files for zip: %v\n", selectedFiles)
+		if len(selectedFiles) == 0 {
+			http.Error(w, "no files selected", http.StatusBadRequest)
 			return
 		}
-		files := r.Form["files"]
-		outs := []string{}
 
-		buf := new(bytes.Buffer)
-		wr := zip.NewWriter(buf)
+		// 1. Filename prep: avoid colons (illegal in many OS filenames)
+		// Using a simpler format: acc_2026-04-25_13-00.zip
+		date := time.Now().Format("2006-01-02_15-04")
 
-		for _, v := range files {
-			file := filepath.Join(filesloc, v)
-			data, err := os.ReadFile(file)
+		// 2. Set headers BEFORE writing any data
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment; filename=acc_"+date+".csv")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		// 3. Stream directly to ResponseWriter to save Pi memory
+		zipWriter := zip.NewWriter(w)
+
+		// Finalize the zip at the end of the function
+		defer zipWriter.Close()
+
+		for _, fileName := range selectedFiles {
+			// Use filepath.Base to prevent "Directory Traversal" attacks
+			// (someone trying to request ../../../etc/passwd)
+			safeName := filepath.Base(fileName)
+			fullPath := filepath.Join(filesloc, safeName)
+
+			file, err := os.Open(fullPath)
 			if err != nil {
-				outs = append(outs, err.Error())
-				break
+				// We can't stop the HTTP stream now, so we skip the missing file
+				continue
 			}
-			f, err2 := wr.Create(v)
-			if err2 != nil {
-				outs = append(outs, err2.Error())
-				break
-			}
-			_, _ = f.Write(data)
-		}
-		wr.Close()
 
-		if len(outs) > 0 {
-			http.Error(w, strings.Join(outs, ";"), http.StatusInternalServerError)
-			return
+			// Create the entry in the zip using the original filename
+			entryWriter, err := zipWriter.Create(safeName)
+			if err != nil {
+				file.Close()
+				continue
+			}
+
+			// 4. Efficiently stream from SD card to Network
+			_, _ = io.Copy(entryWriter, file)
+			file.Close()
 		}
-		date := time.Now().Format(time.RFC3339)
-		w.Header().Set("Content-Disposition", "attachment; filename=acc_"+date+".zip")
-		w.Header().Set("Content-Type", "application/zip")
-		w.WriteHeader(http.StatusOK)
-		w.Write(buf.Bytes())
 	})
 
 	mux.HandleFunc("/cgi-bin/ip_addr.py", func(w http.ResponseWriter, r *http.Request) {
@@ -354,11 +422,18 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"message": "pong"})
 	})
+	// redirect all http traffic to https
+	go func() {
+		http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "https://psctester.local"+r.RequestURI, http.StatusMovedPermanently)
+		}))
+	}()
 
 	port := "8080"
-
+	certPath := "/etc/ssl/certs/psctester.cert.pem"
+	keyPath := "/etc/ssl/private/psctester.key.pem"
 	if user == "root" {
-		port = "80"
+		port = "443"
 	} else if os.Getenv("PSC_PORT") != "" {
 		port = os.Getenv("PSC_PORT")
 	} else {
@@ -366,7 +441,15 @@ func main() {
 	}
 
 	fmt.Printf("Listening on :%s\n", port)
-	http.ListenAndServe(":"+port, mux)
+	if port == "443" {
+		fmt.Printf("Using TLS with cert: %s and key: %s\n", certPath, keyPath)
+		err := http.ListenAndServeTLS(":"+port, certPath, keyPath, mux)
+		if err != nil {
+			log.Fatalf("Failed to start HTTPS server: %v", err)
+		}
+	} else {
+		http.ListenAndServe(":"+port, mux)
+	}
 }
 
 func sseHandler(w http.ResponseWriter, r *http.Request) {
@@ -466,7 +549,7 @@ func startHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filename := "./cgi-bin/dotest.py"
-	if getUser() != "root" {
+	if os.Getenv("TESTING") == "1" {
 		filename = "./cgi-bin/jim_dotest.py"
 	}
 
@@ -531,7 +614,8 @@ func stopHandler(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
 	defer mu.Unlock()
 	if currentCmd != nil && currentCmd.Process != nil {
-		currentCmd.Process.Kill()
+		currentCmd.Process.Signal(os.Interrupt)
+		w.WriteHeader(http.StatusOK)
 	}
 }
 

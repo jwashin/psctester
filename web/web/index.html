@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PSC Tester</title>
+  <title>Meter Tester</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="stylesheet" href="psctester.css">
   <script defer src="psctester.dart.js"></script>
@@ -29,7 +29,7 @@
     <button id="maintenance">System</button>
   </section>
 
-  <section id="testing" class="hidden">
+  <section id="testinput" class="hidden">
     <audio id="bell">
       <source src="clong-2.wav" type="audio/wav">
       <source src="clong-2.mp3" type="audio/mpeg">
@@ -61,12 +61,19 @@
       </div>
     </div>
     <button id="testbutton">New test</button>
+  </section>
+  <section id="testing" class="hidden">
+    
+     <button id="stopbutton">Stop test</button>
     <div id="file_available" class="hidden">
       <form id="download_latest">
         <button type="submit">Download latest file</button>
       </form>
     </div>
     <button id="return_main">Return to Main Page</button>
+    <div id="messageblock" class="hidden">
+    <div id="messages"></div>
+  </div>
   </section>
 
   <section id="files" class="hidden">
@@ -75,10 +82,10 @@
       
       <select id="modselect"></select>
 
-      <form id="filesform" method="post">
+      <form target="_blank" id="filesform" method="post" action="/cgi-bin/get_combined.py">
         <select name="files" multiple id="downloads">
         </select>
-        <button id="download">Download Zipfile</button>
+        <button id="download">Download Combined CSV</button>
         <button id="archive">Move files to Archive</button>
       </form>
       
@@ -101,9 +108,7 @@
     <button id="reinit">Reinitialize control file</button>
     <button id="go_main">Return to Main Page</button>
   </section>
-  <div id="messageblock" class="hidden">
-    <div id="messages"></div>
-  </div>
+  
   
 </body>
 

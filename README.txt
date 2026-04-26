@@ -1,10 +1,12 @@
 Just unpack this as a folder under /home/pi
 
-When run as pi or other users, psctester runs on port 8080, with only simulated data 
+You may run 
 
-If run as root or sudo, it runs on port 80, and actual connections and testing are enabled.
+sudo setcap 'cap_net_bind_service=+ep' /path/to/your/compiled_go_binary
 
-cgi python scripts go in the psctester/build/cgi-bin folder
+or run as root or sudo, it runs on port 443 (80 redirects to 443), and actual connections and testing and encryption are enabled.
+
+cgi python scripts are in the psctester/cgi-bin folder
 
 For the developer:
 
@@ -18,27 +20,21 @@ sudo rm -rf /usr/local/go
 sudo tar -C /usr/local -xvf go.tar.gz
 go version
 
-To build the executable, 
-    $ go build
-from the main folder with main.go and go.mod
-
-
-dart may be installed from the instructions at https://dart.dev/get-dart
-but you only need it if you change the javascript in the web folder.
-
-if you change anything in the web folder, run 
-    $ webdev build
+if you change anything in the web folder, the backend folder, or the web/web folder run 
+    $ make.sh
 from the main folder (with pubspec.yaml)
-
-In a pinch, to compile the main javascript file from dart, 
-    $ dart compile js psctester.dart -o psctester.dart.js
 
 you might need to do
     dart pub global activate webdev
 When you run build, the stuff in the web folder gets compiled to javascript and 
-goes into the build folder. psctester serves the user interface from there.
+goes into the build folder. 
 
-Python scripts stay in cgi-bin.
+Once everything is compiled, the build folder can be used independently as the complete application.
 
+It is ok to run 
+
+sudo setcap 'cap_net_bind_service=+ep' build/psctester
+
+to run the app as a user other than root.
 
 

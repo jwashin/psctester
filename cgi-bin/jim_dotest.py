@@ -42,12 +42,14 @@ def dotest():
 
     time.sleep(random.randint(1, 10))
     for k in range(10):
-        lw.message('first stage%d' % k )
+        d = k+1
+        lw.message('first stage %d' % d )
 
         time.sleep(random.randint(1, 4))
 
     for k in range(10):
-        lw.message('second stage %d' % k)
+        d = k+1
+        lw.message('second stage %d' % d)
 
         time.sleep(random.randint(1, 4))
 
